@@ -1,0 +1,22 @@
+<html>
+	<head>
+		<title>Diário Oficial - Edição nº {{ edicao }}</title>
+	</head>
+	<body>
+		<h1>Diário Oficial - Edição nº {{ edicao }}</h1>
+		<table>
+			<tr>
+				<th>confiança</th>
+				<th style="width:10%">paragrafo_id</th>
+				<th>conteudo</th>
+			</tr>
+			{% for paragrafo_id, paragrafo, confianca in paragrafos %}
+			<tr>
+				<td style="vertical-align:top; text-align:right">{{ confianca|floatformat:5 }}</td>
+				<td style="vertical-align:top"><a href={% url 'informacoes_paragrafo' paragrafo_id %}>{{ paragrafo_id }}</a></td>
+				<td>{{ paragrafo }}</td>
+			</tr>
+			{% endfor %}
+	</body>
+</html>
+

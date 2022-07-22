@@ -1,0 +1,7 @@
+FROM localhost/jupyter:latest
+
+RUN pip install tika && \
+    pip install spacy && \
+    pip install mysql-connector-python && \
+    python3 -m spacy download pt_core_news_lg
+

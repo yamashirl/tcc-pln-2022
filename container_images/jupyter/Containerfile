@@ -1,0 +1,15 @@
+FROM localhost/python:latest
+
+RUN apt-get update && \
+	DEBIAN_FRONTEND=noninteractive TZ=America/Sao_Paulo apt-get install -y tzdata && \
+	apt-get install -y python3-notebook && \
+	rm -rf /var/lib/apt/lists/*
+
+RUN mkdir /notebook
+VOLUME /notebook
+WORKDIR /notebook
+
+EXPOSE 80
+
+CMD jupyter notebook --allow-root --port 80 --no-browser --ip=0.0.0.0 --NotebookApp.token='' --NotebookApp.password=''
+

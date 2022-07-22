@@ -1,0 +1,10 @@
+FROM localhost/python:latest
+
+RUN pip install Django && \
+    pip install mysql-connector-python
+WORKDIR /webproject
+VOLUME /webproject
+EXPOSE 8000
+
+CMD ["python3", "manage.py", "runserver", "0:8000"]
+

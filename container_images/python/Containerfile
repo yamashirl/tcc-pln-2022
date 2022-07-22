@@ -1,0 +1,9 @@
+FROM docker.io/library/ubuntu:22.04
+
+RUN apt-get update && \
+	DEBIAN_FRONTEND=noninteractive TZ=America/Sao_Paulo apt-get install -y tzdata && \
+	apt-get install -y python3 python3-pip python3-requests python3-numpy python3-pandas && \
+	rm -rf /var/lib/apt/lists/*
+
+CMD /bin/bash
+
