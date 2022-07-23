@@ -10,8 +10,8 @@ Métrica de confiança: {{ confianca|floatformat:5 }}
 <hr />
 Melhores descritores:
 <ul>
-    {% for n in best_n %}
-    <li>{{ n.token }} - {{ n.tfidf }}</li>
+    {% for token, tfidf in best_n %}
+    <li>{{ token }} - {{ tfidf }}</li>
     {% endfor %}
 </ul>
 <hr />

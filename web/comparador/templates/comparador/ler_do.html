@@ -6,15 +6,15 @@
 <h1>Diário Oficial - Edição nº {{ edicao }}</h1>
 <table>
     <tr>
+        <th>paragrafo_id</th>
         <th>confiança</th>
-        <th style="width:10%">paragrafo_id</th>
         <th>conteudo</th>
     </tr>
-    {% for paragrafo_id, paragrafo, confianca in paragrafos %}
+    {% for paragrafo_id, confianca, conteudo in paragrafos %}
     <tr>
-        <td style="vertical-align:top; text-align:right">{{ confianca|floatformat:5 }}</td>
         <td style="vertical-align:top"><a href={% url 'informacoes_paragrafo' paragrafo_id %}>{{ paragrafo_id }}</a></td>
-        <td>{{ paragrafo }}</td>
+        <td style="vertical-align:top; text-align:right">{{ confianca|floatformat:5 }}</td>
+        <td>{{ conteudo }}</td>
     </tr>
     {% endfor %}
 </table>
