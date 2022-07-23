@@ -28,7 +28,7 @@ if test "$1" == "up"; then
 	--detach \
 	--env		MYSQL_ROOT_PASSWORD=see-cret \
 	--pod tcc \
-	--volume 	tcc_database_2:/var/lib/mysql \
+	--volume 	tcc_database:/var/lib/mysql \
     	docker.io/library/mysql:latest
     
     podman container run \
