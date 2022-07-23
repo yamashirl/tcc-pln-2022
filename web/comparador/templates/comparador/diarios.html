@@ -1,35 +1,37 @@
 <html>
-	<head>
-		<title>Diários Armazenados</title>
-	</head>
-	<body>
-		<h1>Trabalho de Conclusão de Curso</h1>
-		<h2>Ferramentas de coleta e análise de dados de licitações públicas</h2>
-		<hr />
-		<h3>Aluno: Matheus Yuichi Yamashiro</h3>
-		<h3>Orientador: Prof. Dr. Kelton Augusto Pontara da Costa<br />Coorientador: Prof. Me. Miguel José das Neves</h3>
-		<hr />
-		<h2>Buscar Termo</h2>
-		<form action={% url 'buscar' %} method="POST">
-		{% csrf_token %}
-		<input type="text" name="termo_busca" id="termo">
-		<input type="submit" value="Buscar">
-		</form>
-		<hr />
-		<h2>Diários Oficiais Cadastrados na Base</h2>
-		<h4><a href='.'>Cadastrar novo Diário Oficial (PDF)</a></h4>
-		<table>
-			<tr>
-				<th>Título</th>
-				<th>Data</th>
-			</tr>
-            <tr>
-            </tr>
-		{% for diario in diarios %}
-			<tr>
-				<td><a href={% url 'exibir_do' diario.edicao %}>Diário Oficial Edição nº {{ diario.edicao }}</a></td>
-				<td><a href={% url 'exibir_do' diario.edicao %}>({{ diario.dia }}/{{ diario.mes }}/{{ diario.ano }})</a></tr>
-		{% endfor %}
-	</body>
+<head>
+    <title>Diários Armazenados</title>
+</head>
+<body>
+<h1>Trabalho de Conclusão de Curso</h1>
+<h2>Ferramentas de coleta e análise de dados de licitações públicas</h2>
+<hr />
+<h3>Aluno: Matheus Yuichi Yamashiro</h3>
+<h3>Orientador: Prof. Dr. Kelton Augusto Pontara da Costa<br />Coorientador: Prof. Me. Miguel José das Neves</h3>
+<hr />
+<h2>Buscar Termo</h2>
+<form action={% url 'buscar' %} method="POST">
+{% csrf_token %}
+<input type="text" name="termo_busca" id="termo">
+<input type="submit" value="Buscar">
+</form>
+<hr />
+<h2>Diários Oficiais Cadastrados na Base</h2>
+<h4><a href='.'>Cadastrar novo Diário Oficial (PDF)</a></h4>
+<table>
+    <tr>
+        <th>Título</th>
+        <th>Data</th>
+    </tr>
+    <tr>
+    </tr>
+    {% for diario in diarios %}
+    <tr>
+        <td><a href={% url 'exibir_do' diario.edicao %}>Diário Oficial Edição nº {{ diario.edicao }}</a></td>
+        <td><a href={% url 'exibir_do' diario.edicao %}>({{ diario.dia }}/{{ diario.mes }}/{{ diario.ano }})</a></td>
+    </tr>
+    {% endfor %}
+</table>
+</body>
 </html>
 

@@ -1,24 +1,24 @@
 <html>
-	<head>
-		<title>Resultados da Busca</title>
-	</head>
-	<body>
-		<table>
-			<tr>
-				<th style="text-align:center">paragrafo_id</th>
-				<th style="text-align:center">Contagem</th>
-				<th style="text-align:center">TF.IDF</th>
-				<th style="text-align:left">Conteudo</th>
-			</tr>
-			{% for candidato in candidatos %}
-			<tr>
-				<td style="text-align:center; vertical-align:top">{{ candidato.publicacao_id }}</td>
-				<td style="text-align:center; vertical-align:top">{{ candidato.contagem }}</td>
-				<td style="text-align:center; vertical-align:top">{{ candidato.tfidf|floatformat:5 }}</td>
-				<td style="text-align:left; vertical-align:top">{{ candidato.conteudo }}</td>
-			</tr>
-			{% endfor %}
-		</table>
-	</body>
+<head>
+    <title>Resultados da Busca</title>
+</head>
+<body>
+<table>
+    <tr>
+        <th style="text-align:center">paragrafo_id</th>
+        <th style="text-align:center">Contagem</th>
+        <th style="text-align:center">TF.IDF</th>
+        <th style="text-align:left">Conteudo</th>
+    </tr>
+    {% for candidato in candidatos %}
+    <tr>
+        <td style="text-align:center; vertical-align:top">{{ candidato.publicacao_id }}</td>
+        <td style="text-align:center; vertical-align:top">{{ candidato.contagem }}</td>
+        <td style="text-align:center; vertical-align:top">{{ candidato.tfidf|floatformat:5 }}</td>
+        <td style="text-align:left; vertical-align:top">{{ candidato.conteudo }}</td>
+    </tr>
+    {% endfor %}
+</table>
+</body>
 </html>
 

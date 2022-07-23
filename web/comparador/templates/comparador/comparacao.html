@@ -1,59 +1,59 @@
 
 <html>
-	<head>
-		<title>Comparação do parágrafo {{ paragrafo.paragrafo_id }}</title>
-	</head>
-	<body>
-		<h1>Comparação do parágrafo {{ paragrafo.paragrafo_id }}</h1>
-		<p>{{ paragrafo.conteudo }}</p>
-		<table>
-			<tr>
-				<th><a href="#melhor-cos">Pular para melhor similaridade Cosseno</a></th>
-			</tr>
-			<tr>
-				<th><a href="#melhor-jac">Pular para melhor similaridade Jaccard</a></th>
-			</tr>
-			<tr>
-				<th><a href="#melhor-dis">Pular para melhor similaridade de String</a></th>
-			</tr>
-		</table>
-		<table>
-			<tr>
-				<th>Info.</th>
-				<th>Conteudo</th>
-			</tr>
-			{% for publicacao in publicacoes %}
-			<tr>
-				<td style="vertical-align:top">
-					ID: {{ publicacao.publicacao_id }}
-					<br />
-					S. Cos.:
-					{{ publicacao.cosseno|floatformat:5 }}
-					<br />
-					S. Jac.:
-					{{ publicacao.jaccard|floatformat:5 }}
-					<br />
-					S. Str.:
-					{{ publicacao.dissim|floatformat:5 }}
-					<br />
-					<a href="#">Voltar ao Topo</a>
-				</td>
-				<td>
-					{% if publicacao == melhor_cos %}
-					<a id="melhor-cos" />
-					{% endif %}
-					{% if publicacao == melhor_jac %}
-					<a id="melhor-jac" />
-					{% endif %}
-					{% if publicacao == melhor_dis %}
-					<a id="melhor-dis" />
-					{% endif %}
+<head>
+    <title>Comparação do parágrafo {{ paragrafo.paragrafo_id }}</title>
+</head>
+<body>
+<h1>Comparação do parágrafo {{ paragrafo.paragrafo_id }}</h1>
+<p>{{ paragrafo.conteudo }}</p>
+<table>
+    <tr>
+        <th><a href="#melhor-cos">Pular para melhor similaridade Cosseno</a></th>
+    </tr>
+    <tr>
+        <th><a href="#melhor-jac">Pular para melhor similaridade Jaccard</a></th>
+    </tr>
+    <tr>
+        <th><a href="#melhor-dis">Pular para melhor similaridade de String</a></th>
+    </tr>
+</table>
+<table>
+    <tr>
+        <th>Info.</th>
+        <th>Conteudo</th>
+    </tr>
+    {% for publicacao in publicacoes %}
+    <tr>
+        <td style="vertical-align:top">
+            ID: {{ publicacao.publicacao_id }}
+            <br />
+            S. Cos.:
+            {{ publicacao.cosseno|floatformat:5 }}
+            <br />
+            S. Jac.:
+            {{ publicacao.jaccard|floatformat:5 }}
+            <br />
+            S. Str.:
+            {{ publicacao.dissim|floatformat:5 }}
+            <br />
+            <a href="#">Voltar ao Topo</a>
+        </td>
+        <td>
+            {% if publicacao == melhor_cos %}
+            <a id="melhor-cos" />
+            {% endif %}
+            {% if publicacao == melhor_jac %}
+            <a id="melhor-jac" />
+            {% endif %}
+            {% if publicacao == melhor_dis %}
+            <a id="melhor-dis" />
+            {% endif %}
 
-					{{ publicacao.conteudo }}
-				</td>
-			</tr>
-			{% endfor %}
-		</table>
-	</body>
+            {{ publicacao.conteudo }}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+</body>
 </html>
 

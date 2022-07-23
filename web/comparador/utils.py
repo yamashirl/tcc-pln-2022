@@ -1,7 +1,8 @@
 import re
 import math
 
-def monta_saco_ngram(texto, n = 2, ignora_digito = True):
+
+def monta_saco_ngram(texto, n=2, ignora_digito=True):
     def monta_chave(tokens_anteriores, token_atual):
         chave = ''
 
@@ -22,13 +23,12 @@ def monta_saco_ngram(texto, n = 2, ignora_digito = True):
             tokens_anteriores[i] = token_atual
             return
 
-    tokenizador = re.compile('\w+')
+    tokenizador = re.compile(r'\w+')
 
     saco_ngram = dict()
 
-
     if ignora_digito:
-        conteudo = re.sub('\d', ' ', texto.lower())
+        conteudo = re.sub(r'\d', ' ', texto.lower())
     else:
         conteudo = texto.lower()
 
@@ -48,6 +48,7 @@ def monta_saco_ngram(texto, n = 2, ignora_digito = True):
 
     return saco_ngram
 
+
 def atualiza_saco_corpus(saco_corpus, saco):
     for token in saco:
         if token not in saco_corpus:
@@ -55,12 +56,14 @@ def atualiza_saco_corpus(saco_corpus, saco):
         else:
             saco_corpus[token] += saco[token]
 
+
 def atualiza_idf_corpus(saco_corpus, saco):
     for token in saco:
         if token not in saco_corpus:
             saco_corpus[token] = 1
         else:
             saco_corpus[token] += 1
+
 
 def calcula_cosseno_sacos(saco_a, saco_b):
     produto_escalar = 0.0
@@ -85,6 +88,7 @@ def calcula_cosseno_sacos(saco_a, saco_b):
 
     return similaridade
 
+
 def calcula_jaccard_sacos(saco_a, saco_b):
     intersec = 0
 
@@ -94,11 +98,12 @@ def calcula_jaccard_sacos(saco_a, saco_b):
     uniao = len(saco_a) + len(saco_b) - intersec
     if uniao == 0:
         return 0
-    return intersec/uniao
+    return intersec / uniao
 
-def calcula_dissimilaridade_strings(string_a, string_b, n = 2):
-    saco_a = monta_saco_ngram(string_a, n = n, ignora_digito = False)
-    saco_b = monta_saco_ngram(string_b, n = n, ignora_digito = False)
+
+def calcula_dissimilaridade_strings(string_a, string_b, n=2):
+    saco_a = monta_saco_ngram(string_a, n=n, ignora_digito=False)
+    saco_b = monta_saco_ngram(string_b, n=n, ignora_digito=False)
 
     tot_a = 0
     excl_a = 0
@@ -135,4 +140,3 @@ def calcula_dissimilaridade_strings(string_a, string_b, n = 2):
         return 1
 
     return (excl_a * excl_b) / (tot_a * tot_b)
-

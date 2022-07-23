@@ -1,21 +1,21 @@
 <html>
-	<head>
-		<title>Informações do Parágrafo {{ paragrafo_id }}</title>
-	</head>
-	<body>
-		<h1>Informações - Parágrafo {{ paragrafo_id }}</h1>
-		<p>{{ conteudo }}</p>
-		<br />
-		Métrica de confiança: {{ confianca|floatformat:5 }}
-		<hr />
-		Melhores descritores:
-		<ul>
-		{% for n in best_n %}
-		<li>{{ n.token }} - {{ n.tfidf }}</li>
-		{% endfor %}
-		</ul>
-		<hr />
-		<a href = {% url 'candidatos' paragrafo_id %}>Buscar na base</a>
-	</body>
+<head>
+    <title>Informações do Parágrafo {{ paragrafo_id }}</title>
+</head>
+<body>
+<h1>Informações - Parágrafo {{ paragrafo_id }}</h1>
+<p>{{ conteudo }}</p>
+<br />
+Métrica de confiança: {{ confianca|floatformat:5 }}
+<hr />
+Melhores descritores:
+<ul>
+    {% for n in best_n %}
+    <li>{{ n.token }} - {{ n.tfidf }}</li>
+    {% endfor %}
+</ul>
+<hr />
+<a href = {% url 'candidatos' paragrafo_id %}>Buscar na base</a>
+</body>
 </html>
 

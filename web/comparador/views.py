@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.http import HttpResponse
 from django.template import loader
 
@@ -14,14 +13,15 @@ sql_config = {
     'database': 'tcc',
 }
 
+
 def load_3gram_scorer(session):
     try:
         pubs_3gram_bag_idf = session['pubs_3gram_bag_idf']
         pars_3gram_bag_idf = session['pars_3gram_bag_idf']
-        pubs_3gram_n       = session['pubs_3gram_n']
-        pars_3gram_n       = session['pars_3gram_n']
-        score_bag_pub      = session['score_bag_pub']
-        score_bag_par      = session['score_bag_par']
+        pubs_3gram_n = session['pubs_3gram_n']
+        pars_3gram_n = session['pars_3gram_n']
+        score_bag_pub = session['score_bag_pub']
+        score_bag_par = session['score_bag_par']
     except KeyError as e:
         pubs_3gram_bag_idf = {}
         pars_3gram_bag_idf = {}
@@ -39,9 +39,9 @@ def load_3gram_scorer(session):
             cursor.fetchall()
 
             cursor.execute('SELECT chave, pu.idf, pa.idf ' +
-                            'FROM saco_item as pu INNER JOIN saco_item as pa ' +
-                            'USING (chave) ' +
-                            'WHERE pu.saco_id = %s AND pa.saco_id = %s', (saco_id_publicacoes, saco_id_paragrafos))
+                           'FROM saco_item as pu INNER JOIN saco_item as pa ' +
+                           'USING (chave) ' +
+                           'WHERE pu.saco_id = %s AND pa.saco_id = %s', (saco_id_publicacoes, saco_id_paragrafos))
 
             for chave, pu_idf, pa_idf in cursor:
                 pubs_3gram_bag_idf[chave] = pu_idf
@@ -66,10 +66,11 @@ def load_3gram_scorer(session):
 
         session['pubs_3gram_bag_idf'] = pubs_3gram_bag_idf
         session['pars_3gram_bag_idf'] = pars_3gram_bag_idf
-        session['pubs_3gram_n']       = pubs_3gram_n
-        session['pars_3gram_n']       = pars_3gram_n
-        session['score_bag_pub']      = score_bag_pub
-        session['score_bag_par']      = score_bag_par
+        session['pubs_3gram_n'] = pubs_3gram_n
+        session['pars_3gram_n'] = pars_3gram_n
+        session['score_bag_pub'] = score_bag_pub
+        session['score_bag_par'] = score_bag_par
+
 
 def score_paragrafo(session, conteudo):
     if ('score_bag_pub' not in session
@@ -83,15 +84,16 @@ def score_paragrafo(session, conteudo):
     score_pub = 0
     score_par = 0
 
-    saco_par = utils.monta_saco_ngram(conteudo, n = 3)
+    saco_par = utils.monta_saco_ngram(conteudo, n=3)
 
     for chave in saco_par:
         if chave in pubs_3gram_bag_idf:
             score_pub += saco_par[chave] * score_bag_pub[chave]
             score_par += saco_par[chave] * score_bag_par[chave]
-    score = score_pub/(score_par + 1)
+    score = score_pub / (score_par + 1)
 
     return score
+
 
 def temp(request):
     scores = []
@@ -105,7 +107,9 @@ def temp(request):
 
     return HttpResponse(scores)
 
+
 pubs_1gram_bag_idf = {}
+
 
 def load_1gram(session):
     if ('pubs_1gram_bag_idf' not in session
@@ -125,14 +129,15 @@ def load_1gram(session):
             pubs_1gram_n, = cursor.fetchone()
             cursor.fetchall()
 
-#            cursor.execute('SELECT count(*) FROM paragrafo')
-#            pars_1gram_n, = cursor.fetchone()
-#            cursor.fetchall()
+            #            cursor.execute('SELECT count(*) FROM paragrafo')
+            #            pars_1gram_n, = cursor.fetchone()
+            #            cursor.fetchall()
             cursor.close()
         session['pubs_1gram_bag_idf'] = pubs_1gram_bag_idf
-        session['pubs_1gram_n']       = pubs_1gram_n
+        session['pubs_1gram_n'] = pubs_1gram_n
 
-def get_best_n_terms(session, conteudo, n = 1):
+
+def get_best_n_terms(session, conteudo, n=1):
     if ('pubs_1gram_bag_idf' not in session
             or 'pubs_1gram_n' not in session):
         load_1gram(session)
@@ -140,7 +145,7 @@ def get_best_n_terms(session, conteudo, n = 1):
     pubs_1gram_bag_idf = session['pubs_1gram_bag_idf']
     pubs_1gram_n = session['pubs_1gram_n']
 
-    tokens = utils.monta_saco_ngram(conteudo, n = 1)
+    tokens = utils.monta_saco_ngram(conteudo, n=1)
     tf = {}
     for token in tokens:
         if token in tf:
@@ -158,10 +163,10 @@ def get_best_n_terms(session, conteudo, n = 1):
         while i >= 0:
             if tfidf_pub[token] > max_n[i]['tfidf']:
                 if i < n - 1:
-                    max_n[i+1] = max_n[i]
+                    max_n[i + 1] = max_n[i]
                 max_n[i] = {
-                        'token': token,
-                        'tfidf': tfidf_pub[token]
+                    'token': token,
+                    'tfidf': tfidf_pub[token]
                 }
 
             i -= 1
@@ -170,6 +175,7 @@ def get_best_n_terms(session, conteudo, n = 1):
 
 def index(request):
     return HttpResponse("Hello, world.")
+
 
 def informacoes_paragrafo(request, paragrafo_id):
     load_3gram_scorer(request.session)
@@ -184,17 +190,18 @@ def informacoes_paragrafo(request, paragrafo_id):
         cursor.close()
 
     score = score_paragrafo(request.session, conteudo)
-    max_tfidf = get_best_n_terms(request.session, conteudo, n = 10)
+    max_tfidf = get_best_n_terms(request.session, conteudo, n=10)
 
     template = loader.get_template('comparador/info_paragrafo.html')
     context = {
-            'paragrafo_id': paragrafo_id,
-            'conteudo': conteudo,
-            'confianca': score,
-            'best_n': max_tfidf,
+        'paragrafo_id': paragrafo_id,
+        'conteudo': conteudo,
+        'confianca': score,
+        'best_n': max_tfidf,
     }
 
     return HttpResponse(template.render(context, request))
+
 
 def exibir_diarios(request):
     with mysql.connector.connect(**sql_config) as connection:
@@ -214,6 +221,7 @@ def exibir_diarios(request):
 
     return HttpResponse(template.render(context, request))
 
+
 def exibir_do(request, edicao):
     with mysql.connector.connect(**sql_config) as connection:
         cursor = connection.cursor()
@@ -227,11 +235,12 @@ def exibir_do(request, edicao):
         cursor.close()
     template = loader.get_template('comparador/ler_do.html')
     context = {
-            'edicao': edicao,
-            'paragrafos': paragrafos,
+        'edicao': edicao,
+        'paragrafos': paragrafos,
     }
 
     return HttpResponse(template.render(context, request))
+
 
 def obter_melhores_candidatos(session, paragrafo_id):
     try:
@@ -249,7 +258,7 @@ def obter_melhores_candidatos(session, paragrafo_id):
             cursor.close()
 
         for publicacao_id, conteudo in conteudo_publicacoes:
-            saco_pub = utils.monta_saco_ngram(conteudo, n = 3)
+            saco_pub = utils.monta_saco_ngram(conteudo, n=3)
             saco_publicacoes[str(publicacao_id)] = saco_pub
         session['saco_publicacoes'] = saco_publicacoes
         session['conteudo_publicacoes'] = conteudo_publicacoes
@@ -261,7 +270,7 @@ def obter_melhores_candidatos(session, paragrafo_id):
         cursor.fetchall()
         cursor.close()
 
-    saco_alvo = utils.monta_saco_ngram(conteudo_paragrafo, n = 3)
+    saco_alvo = utils.monta_saco_ngram(conteudo_paragrafo, n=3)
 
     publicacoes = []
     for publicacao_id, conteudo in conteudo_publicacoes:
@@ -269,16 +278,17 @@ def obter_melhores_candidatos(session, paragrafo_id):
 
         similaridade_cosseno = utils.calcula_cosseno_sacos(saco_pub, saco_alvo)
         similaridade_jaccard = utils.calcula_jaccard_sacos(saco_pub, saco_alvo)
-        dissimilaridade_str  = utils.calcula_dissimilaridade_strings(conteudo_paragrafo, conteudo)
+        dissimilaridade_str = utils.calcula_dissimilaridade_strings(conteudo_paragrafo, conteudo)
         publicacoes.append({
             'publicacao_id': publicacao_id,
             'conteudo': conteudo,
             'cosseno': similaridade_cosseno,
             'jaccard': similaridade_jaccard,
-            'dissim' : dissimilaridade_str,
+            'dissim': dissimilaridade_str,
         })
 
     return conteudo, publicacoes
+
 
 def mostrar_candidatos_api(request, paragrafo_id):
     conteudo_paragrafo, publicacoes = obter_melhores_candidatos(request.session, paragrafo_id)
@@ -299,18 +309,19 @@ def mostrar_candidatos_api(request, paragrafo_id):
                 melhor_dis = publicacao
 
     context = {
-            'melhor_cos': melhor_cos,
-            'melhor_jac': melhor_jac,
-            'melhor_dis': melhor_dis
+        'melhor_cos': melhor_cos,
+        'melhor_jac': melhor_jac,
+        'melhor_dis': melhor_dis
     }
 
     template = loader.get_template('comparador/comparacao_api.html')
 
     return HttpResponse(template.render(context, request))
 
+
 def mostrar_candidatos(request, paragrafo_id):
     conteudo_paragrafo, publicacoes = obter_melhores_candidatos(paragrafo_id)
-    publicacoes_ord = sorted(publicacoes, key = lambda e: e['dissim'], reverse = False)
+    publicacoes_ord = sorted(publicacoes, key=lambda e: e['dissim'], reverse=False)
 
     melhor_cos = None
     melhor_jac = None
@@ -329,23 +340,26 @@ def mostrar_candidatos(request, paragrafo_id):
 
     template = loader.get_template('comparador/comparacao.html')
     context = {
-            'paragrafo': {
-                'paragrafo_id': paragrafo_id,
-                'conteudo': conteudo_paragrafo
-            },
-            'publicacoes': publicacoes_ord,
-            'melhor_cos': melhor_cos,
-            'melhor_jac': melhor_jac,
-            'melhor_dis': melhor_dis
+        'paragrafo': {
+            'paragrafo_id': paragrafo_id,
+            'conteudo': conteudo_paragrafo
+        },
+        'publicacoes': publicacoes_ord,
+        'melhor_cos': melhor_cos,
+        'melhor_jac': melhor_jac,
+        'melhor_dis': melhor_dis
     }
 
     return HttpResponse(template.render(context, request))
 
+
 def comparar(request, paragrafo_id, publicacao_id):
     pass
 
+
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+
 
 def resultado_busca(request, termo_busca):
     load_1gram(request.session)
@@ -363,23 +377,24 @@ def resultado_busca(request, termo_busca):
 
             lr = len(resultado)
             if lr > 0:
-                candidatos.append({'publicacao_id':publicacao_id,
-                                    'contagem': lr,
-                                    'tfidf': lr/len(n_pub),
-                                    'conteudo':conteudo})
+                candidatos.append({'publicacao_id': publicacao_id,
+                                   'contagem': lr,
+                                   'tfidf': lr / len(n_pub),
+                                   'conteudo': conteudo})
         cursor.close()
     template = loader.get_template('comparador/busca.html')
     context = {'candidatos': candidatos}
 
     return HttpResponse(template.render(context, request))
 
+
 def buscar(request):
+    #    template = loader.get_template('comparador/busca.html')
+    #    context = {'candidatos': candidatos}
 
-#    template = loader.get_template('comparador/busca.html')
-#    context = {'candidatos': candidatos}
-
-#    return HttpResponse(template.render(context, request))
+    #    return HttpResponse(template.render(context, request))
     return HttpResponseRedirect(reverse('resultado', args=(request.POST['termo_busca'],)))
+
 
 def random(request):
     with mysql.connector.connect(**sql_config) as connection:
@@ -395,4 +410,3 @@ def random(request):
         amontoado += '<p>%d</p>' % identificador
 
     return HttpResponse(amontoado)
-
