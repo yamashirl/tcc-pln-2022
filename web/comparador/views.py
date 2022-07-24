@@ -6,6 +6,7 @@ from django.urls import reverse
 import mysql.connector
 
 from . import utils
+from . import interface as ido
 
 
 def temp(request):
@@ -43,7 +44,7 @@ def informacoes_paragrafo(request, paragrafo_id):
 
 def exibir_diarios(request):
     diarios = utils.obter_lista_diarios()
-    
+
     template = loader.get_template('comparador/diarios.html')
     context = {'diarios': diarios}
 
@@ -113,3 +114,8 @@ def resultado_busca(request, termo_busca):
     context = {'candidatos': candidatos}
 
     return HttpResponse(template.render(context, request))
+
+
+def baixar_do(request, ano, mes):
+    links = ido.obter_diarios(ano, mes)
+    return HttpResponse(links)
