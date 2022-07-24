@@ -41,6 +41,20 @@ def obter_paragrafos_do(edicao):
     return paragrafos
 
 
+def obter_conteudo_publicacao(publicacao_id):
+    with mysql.connector.connect(**sql_config) as connection:
+        cursor = connection.cursor()
+
+        # OBTÉM O PARÁGRAFO A SER PESQUISADO
+        cursor.execute('SELECT conteudo FROM publicacao WHERE publicacao_id = %s', (publicacao_id,))
+        conteudo, = cursor.fetchone()
+        cursor.fetchall()
+
+        cursor.close()
+
+    return conteudo
+
+
 def obter_conteudo_paragrafo(paragrafo_id):
     with mysql.connector.connect(**sql_config) as connection:
         cursor = connection.cursor()
@@ -141,15 +155,15 @@ def calcular_tfidf_termo_publicacao(session, termo, publicacao_id):
         load_1gram_publicacao(session)
 
     if str(publicacao_id) + '_1gram_bag' not in session:
-        conteudo_publicacao = obter_conteudo_paragrafo(publicacao_id)
+        conteudo_publicacao = obter_conteudo_publicacao(publicacao_id)
         conteudo_sacola = monta_saco_ngram(conteudo_publicacao, n=1)
         session[str(publicacao_id) + '_1gram_bag'] = conteudo_sacola
 
-    sacola_corpus = session['pars_1gram_bag_idf']
-    n_corpus = session['pars_n']
-    sacola_paragrafo = session[str(publicacao_id) + '_1gram_bag']
+    sacola_corpus = session['pubs_1gram_bag_idf']
+    n_corpus = session['pubs_n']
+    sacola_publicacao = session[str(publicacao_id) + '_1gram_bag']
 
-    tfidf_termo = calcular_tfidf_termo(termo, sacola_paragrafo, sacola_corpus, n_corpus)
+    tfidf_termo = calcular_tfidf_termo(termo, sacola_publicacao, sacola_corpus, n_corpus)
 
     return tfidf_termo
 
@@ -253,7 +267,7 @@ def calcula_jaccard_sacos(saco_a, saco_b):
     return intersec / uniao
 
 
-def calcula_dissimilaridade_strings(string_a, string_b, n=2):
+def calcula_dissimilaridade_strings(string_a, string_b, n=1):
     saco_a = monta_saco_ngram(string_a, n=n, ignora_digito=False)
     saco_b = monta_saco_ngram(string_b, n=n, ignora_digito=False)
 
@@ -412,13 +426,7 @@ def obter_melhores_candidatos(session, paragrafo_id):
         session['saco_publicacoes'] = saco_publicacoes
         session['conteudo_publicacoes'] = conteudo_publicacoes
 
-    with mysql.connector.connect(**sql_config) as connection:
-        cursor = connection.cursor()
-        cursor.execute('SELECT conteudo FROM paragrafo WHERE paragrafo_id = %s', (paragrafo_id,))
-        conteudo_paragrafo, = cursor.fetchone()
-        cursor.fetchall()
-        cursor.close()
-
+    conteudo_paragrafo = obter_conteudo_paragrafo(paragrafo_id)
     saco_alvo = monta_saco_ngram(conteudo_paragrafo, n=3)
 
     publicacoes = []
@@ -436,4 +444,54 @@ def obter_melhores_candidatos(session, paragrafo_id):
             'dissim': dissimilaridade_str,
         })
 
-    return conteudo, publicacoes
+    publicacoes_ord = sorted(publicacoes, key=lambda e: e['dissim'], reverse=False)
+
+    melhor_cos = None
+    melhor_jac = None
+    melhor_dis = None
+    if len(publicacoes_ord) > 0:
+        melhor_cos = publicacoes_ord[0]
+        melhor_jac = publicacoes_ord[0]
+        melhor_dis = publicacoes_ord[0]
+        for publicacao in publicacoes_ord:
+            if publicacao['cosseno'] > melhor_cos['cosseno']:
+                melhor_cos = publicacao
+            if publicacao['jaccard'] > melhor_jac['jaccard']:
+                melhor_jac = publicacao
+            if publicacao['dissim'] < melhor_dis['dissim']:
+                melhor_dis = publicacao
+
+    return publicacoes_ord, melhor_cos, melhor_jac, melhor_dis
+
+
+def obter_publicacoes():
+    publicacoes = []
+    with mysql.connector.connect(**sql_config) as connection:
+        cursor = connection.cursor()
+
+        cursor.execute('SELECT publicacao_id, conteudo FROM publicacao')
+        for publicacao_id, conteudo in cursor:
+            publicacoes.append((publicacao_id, conteudo))
+        cursor.close()
+    return publicacoes
+
+
+def buscar_termo_publicacao(session, termo):
+    publicacoes = obter_publicacoes()
+    candidatos = []
+
+    busca_termo = re.compile(r'\b' + termo + r'\b', flags=re.IGNORECASE)
+
+    for publicacao_id, conteudo in publicacoes:
+        match = busca_termo.search(conteudo)
+
+        if match is None:
+            continue
+
+        tfidf = calcular_tfidf_termo_publicacao(session, termo, publicacao_id)
+        candidatos.append({'publicacao_id': publicacao_id,
+                           'tfidf': tfidf,
+                           'conteudo': conteudo,
+                           })
+
+    return sorted(candidatos, key=lambda k: k['tfidf'], reverse=True)
