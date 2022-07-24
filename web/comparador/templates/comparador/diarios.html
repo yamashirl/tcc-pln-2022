@@ -16,8 +16,14 @@
 <input type="submit" value="Buscar">
 </form>
 <hr />
+<h2>Buscar novos diários</h2>
+<form action={% url 'baixar_do_redirect' %} method="POST">
+{% csrf_token %}
+<input type="number" name="ano_do_busca" value="Ano" min="2015" max="2022">
+<input type="number" name="mes_do_busca" value="Mês" min="1" max="12">
+<input type="submit" value="Buscar DOs">
+</form>
 <h2>Diários Oficiais Cadastrados na Base</h2>
-<h4><a href={% url 'baixar_do' 2022 07 %}>Cadastrar novo Diário Oficial (PDF)</a></h4>
 <table>
     <tr>
         <th>Título</th>

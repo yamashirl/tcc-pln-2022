@@ -116,6 +116,10 @@ def resultado_busca(request, termo_busca):
     return HttpResponse(template.render(context, request))
 
 
+def baixar_do_redirect(request):
+    return HttpResponseRedirect(reverse('baixar_do', args=(request.POST['ano_do_busca'], request.POST['mes_do_busca'])))
+
+
 def baixar_do(request, ano, mes):
-    links = ido.obter_diarios(ano, mes)
-    return HttpResponse(links)
+    ido.obter_diarios(ano, mes)
+    return HttpResponse(reverse('exibir_diarios'))
