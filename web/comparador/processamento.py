@@ -102,6 +102,7 @@ def limpa_txt(conteudo):
 
 
 def insere_diario(titulo, paragrafos):
+    success = True
     with mysql.connector.connect(**sql_config) as connection:
         cursor = connection.cursor()
         try:
@@ -114,9 +115,11 @@ def insere_diario(titulo, paragrafos):
             cursor.close()
             connection.commit()
         except mysql.connector.Error as e:
+            success = False
             cursor.close()
             connection.rollback()
             print(e)
+    return success
 
 
 def insere_diario_sql(cursor, edicao, ano, mes, dia):
@@ -378,6 +381,7 @@ def obter_detalhes_licitacao(identificador):
 
 
 def inserir_licitacao_sql(dict_licitacao):
+    existe = False
     with mysql.connector.connect(**sql_config) as connection:
         cursor = connection.cursor()
 
@@ -399,13 +403,16 @@ def inserir_licitacao_sql(dict_licitacao):
         identificador = dict_licitacao['identificador']
         numero_modalidade = dict_licitacao['titulo']['numero']
         ano_modalidade = dict_licitacao['titulo']['ano']
-        numero_processo = dict_licitacao['processo']['numero']
-        ano_processo = dict_licitacao['processo']['ano']
+
+        if 'processo' in dict_licitacao:
+            numero_processo = dict_licitacao['processo']['numero']
+            ano_processo = dict_licitacao['processo']['ano']
 
         cursor.execute('SELECT numero_processo FROM licitacao WHERE identificador = %s', (identificador,))
         linha = cursor.fetchone()
         cursor.fetchall()
         if linha is not None:
+            existe = True
             cursor.execute('DELETE FROM publicacao WHERE identificador = %s', (identificador,))
             cursor.execute('DELETE FROM observacao WHERE identificador = %s', (identificador,))
             cursor.execute('DELETE FROM apensados WHERE identificador = %s', (identificador,))
@@ -415,10 +422,12 @@ def inserir_licitacao_sql(dict_licitacao):
             cursor.execute('DELETE FROM licitacao WHERE identificador = %s', (identificador,))
 
         cursor.execute('INSERT INTO'
-                       + ' licitacao(identificador, modalidade_id, numero_modalidade, ano_modalidade, tipo_id, interessado_id, numero_processo, ano_processo)'
-                       + ' VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
-                       (identificador, modalidade_id, numero_modalidade, ano_modalidade, tipo_id, interessado_id,
-                        numero_processo, ano_processo))
+                       + ' licitacao(identificador, modalidade_id, numero_modalidade, ano_modalidade, tipo_id, interessado_id)'
+                       + ' VALUES (%s, %s, %s, %s, %s, %s)',
+                       (identificador, modalidade_id, numero_modalidade, ano_modalidade, tipo_id, interessado_id))
+        if 'processo' in dict_licitacao:
+            cursor.execute('UPDATE licitacao SET numero_processo = %s, ano_processo = %s WHERE identificador = %s',
+                           (numero_processo, ano_processo, identificador))
 
         if 'publicacoes' in dict_licitacao:
             for publicacao in dict_licitacao['publicacoes']:
@@ -441,6 +450,7 @@ def inserir_licitacao_sql(dict_licitacao):
                     )
         cursor.close()
         connection.commit()
+    return existe
 
 
 def baixar_licitacoes(lista_download, tempo_espera=0.1):
@@ -451,10 +461,18 @@ def baixar_licitacoes(lista_download, tempo_espera=0.1):
     :keyword diretorio str: Diretorio de destino para os arquivos .json baixados.
     """
 
+    statuses = []
     for licitacao in lista_download:
         link_licitacao = licitacao['link']
-
         dict_licitacao = obter_detalhes_licitacao(link_licitacao)
+        status = inserir_licitacao_sql(dict_licitacao)
+        statuses.append({
+            'identificador': dict_licitacao['identificador'],
+            'modalidade': dict_licitacao['titulo']['modalidade'],
+            'numero': dict_licitacao['titulo']['numero'],
+            'ano': dict_licitacao['titulo']['ano'],
+            'status': status
+        })
 
-        inserir_licitacao_sql(dict_licitacao)
+    return statuses
 

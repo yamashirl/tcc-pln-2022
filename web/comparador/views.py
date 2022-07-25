@@ -121,8 +121,14 @@ def baixar_do_redirect(request):
 
 
 def baixar_do(request, ano, mes):
-    ido.obter_diarios(ano, mes)
-    return HttpResponse(reverse('exibir_diarios'))
+    dados = ido.obter_diarios(ano, mes)
+
+    template = loader.get_template('comparador/diarios_baixados.html')
+    context = {
+        'dos': dados
+    }
+
+    return HttpResponse(template.render(context, request))
 
 
 def baixar_licitacoes_redirect(request):
@@ -130,6 +136,11 @@ def baixar_licitacoes_redirect(request):
 
 
 def baixar_licitacoes(request, ano, t):
-    lics = ido.atualizar_licitacoes_por_ano(ano, t=t)
+    statuses = ido.atualizar_licitacoes_por_ano(ano, t=t)
 
-    return HttpResponse(str(lics))
+    template = loader.get_template('comparador/licitacoes_baixadas.html')
+    context = {
+        'licitacoes': statuses
+    }
+
+    return HttpResponse(template.render(context, request))

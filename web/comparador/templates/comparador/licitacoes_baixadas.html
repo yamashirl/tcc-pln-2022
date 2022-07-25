@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumo de Downloads</title>
+</head>
+<body>
+<h1>Resumo de Licitações Baixadas</h1>
+<table>
+    <tr>
+        <th>Status</th>
+        <th>Identificador</th>
+        <th>Modalidade</th>
+    </tr>
+    {% for licitacao in licitacoes %}
+    <tr>
+        {% if licitacao.status == True %}
+        <td>Atualizado</td>
+        {% else %}
+        <td>Novo</td>
+        {% endif %}
+        <td>{{ licitacao.identificador }}</td>
+        <td>{{ licitacao.modalidade }} {{ licitacao.numero }}/{{ licitacao.ano }}</td>
+    </tr>
+    {% endfor %}
+</table>
+</body>
+</html>
