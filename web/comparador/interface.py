@@ -5,6 +5,8 @@ from os import path
 def obter_diarios(ano, mes):
     links = proc.obter_links_diarios_oficiais(f'{ano:02d}', f'{mes:02d}')
 
+    dados = []
+
     for link in links:
         filename = path.basename(link)
 
@@ -17,9 +19,16 @@ def obter_diarios(ano, mes):
         dados_raspados = proc.raspa_pdf(diario)
         lista_paragrafos = proc.limpa_txt(dados_raspados)
 
-        proc.insere_diario(dados_titulo, lista_paragrafos)
+        sucess = proc.insere_diario(dados_titulo, lista_paragrafos)
+        dados.append({
+            'sucess': sucess,
+            'edicao': dados_titulo['edicao'],
+            'ano': dados_titulo['ano'],
+            'mes': dados_titulo['mes'],
+            'dia': dados_titulo['dia'],
+        })
 
-    return links
+    return dados
 
 
 def atualizar_licitacao(identificador):
@@ -36,8 +45,7 @@ def atualizar_licitacoes_por_ano(ano, t=1):
     licitacoes = proc.obter_tabela_licitacoes(t=t)
     licitacoes_dl = []
     for licitacao in licitacoes:
-        print(licitacao['ano'])
         if licitacao['ano'] == ano_s:
             licitacoes_dl.append(licitacao)
-    proc.baixar_licitacoes(licitacoes_dl)
-    return licitacoes_dl
+    statuses = proc.baixar_licitacoes(licitacoes_dl)
+    return statuses

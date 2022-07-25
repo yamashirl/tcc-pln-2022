@@ -33,8 +33,8 @@ CREATE TABLE licitacao (
 	ano_modalidade INTEGER,
 	tipo_id BIGINT,
 	interessado_id BIGINT,
-	numero_processo INTEGER NOT NULL,
-	ano_processo INTEGER NOT NULL,
+	numero_processo INTEGER,
+	ano_processo INTEGER,
 
 	FOREIGN KEY (modalidade_id) REFERENCES modalidade (modalidade_id),
 	FOREIGN KEY (tipo_id) REFERENCES tipo (tipo_id),

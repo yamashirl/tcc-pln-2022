@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumo de Downloads</title>
+</head>
+<body>
+<h1>Resumo de Diários Baixados</h1>
+<table>
+    <tr>
+        <th>Status</th>
+        <th>Edição</th>
+        <th>Data</th>
+    </tr>
+    {% for diario in dos %}
+    <tr>
+        {% if diario.sucess == True %}
+        <td>Novo</td>
+        {% else %}
+        <td>Já existente</td>
+        {% endif %}
+        <td>{{ diario.edicao }}</td>
+        <td>{{ diario.dia }}/{{ diario.mes }}/{{ diario.ano }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>
