@@ -6,6 +6,7 @@ from django.urls import reverse
 import mysql.connector
 
 from . import utils
+from . import interface as ido
 
 
 def temp(request):
@@ -43,7 +44,7 @@ def informacoes_paragrafo(request, paragrafo_id):
 
 def exibir_diarios(request):
     diarios = utils.obter_lista_diarios()
-    
+
     template = loader.get_template('comparador/diarios.html')
     context = {'diarios': diarios}
 
@@ -113,3 +114,22 @@ def resultado_busca(request, termo_busca):
     context = {'candidatos': candidatos}
 
     return HttpResponse(template.render(context, request))
+
+
+def baixar_do_redirect(request):
+    return HttpResponseRedirect(reverse('baixar_do', args=(request.POST['ano_do_busca'], request.POST['mes_do_busca'])))
+
+
+def baixar_do(request, ano, mes):
+    ido.obter_diarios(ano, mes)
+    return HttpResponse(reverse('exibir_diarios'))
+
+
+def baixar_licitacoes_redirect(request):
+    return HttpResponseRedirect(reverse('baixar_licitacoes', args=(request.POST['ano_lic_busca'], request.POST['t'])))
+
+
+def baixar_licitacoes(request, ano, t):
+    lics = ido.atualizar_licitacoes_por_ano(ano, t=t)
+
+    return HttpResponse(str(lics))

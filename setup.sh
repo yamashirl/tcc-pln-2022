@@ -33,6 +33,8 @@ if test "$1" == "up"; then
     
     podman container run \
         --name django-server \
+        --env       TIKA_CLIENT_ONLY=1 \
+        --env       TIKA_SERVER_ENDPOINT="http://localhost:9998" \
 	--tty \
 	--detach \
 	--pod tcc \

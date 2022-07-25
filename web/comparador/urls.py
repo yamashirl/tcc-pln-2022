@@ -13,4 +13,8 @@ urlpatterns = [
     path('buscar/', views.buscar, name='buscar'),
     path('resultado/<str:termo_busca>', views.resultado_busca, name='resultado'),
     path('temp', views.temp, name='temp'),
+    path('baixar_do', views.baixar_do_redirect, name='baixar_do_redirect'),
+    path('baixar_do/<int:ano>/<int:mes>', views.baixar_do, name='baixar_do'),
+    path('baixar_licitcacoes', views.baixar_licitacoes_redirect, name='baixar_licitacoes_redirect'),
+    path('baixar_licitcacoes/<int:ano>/<str:t>', views.baixar_licitacoes, name='baixar_licitacoes')
 ]
