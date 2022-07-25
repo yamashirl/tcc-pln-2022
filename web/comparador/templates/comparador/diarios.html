@@ -16,6 +16,18 @@
 <input type="submit" value="Buscar">
 </form>
 <hr />
+<h2>Atualizar licitações</h2>
+<form action={% url 'baixar_licitacoes_redirect' %} method="POST">
+    {% csrf_token %}
+    <input type="number" name="ano_lic_busca" value="ano" min="2015" max="2022">
+<br/>
+    <input type="radio" name="t" value="1">Abertas
+    <input type="radio" name="t" value="2">Suspensas
+    <input type="radio" name="t" value="3">Encerradas
+<br/>
+    <input type="submit" value="Buscar licitações">
+</form>
+<hr />
 <h2>Buscar novos diários</h2>
 <form action={% url 'baixar_do_redirect' %} method="POST">
 {% csrf_token %}

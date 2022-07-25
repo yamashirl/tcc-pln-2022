@@ -407,6 +407,11 @@ def inserir_licitacao_sql(dict_licitacao):
         cursor.fetchall()
         if linha is not None:
             cursor.execute('DELETE FROM publicacao WHERE identificador = %s', (identificador,))
+            cursor.execute('DELETE FROM observacao WHERE identificador = %s', (identificador,))
+            cursor.execute('DELETE FROM apensados WHERE identificador = %s', (identificador,))
+            cursor.execute('DELETE FROM edital WHERE identificador = %s', (identificador,))
+            cursor.execute('DELETE FROM especificacao WHERE identificador = %s', (identificador,))
+            cursor.execute('DELETE FROM prazo WHERE identificador = %s', (identificador,))
             cursor.execute('DELETE FROM licitacao WHERE identificador = %s', (identificador,))
 
         cursor.execute('INSERT INTO'
@@ -423,15 +428,16 @@ def inserir_licitacao_sql(dict_licitacao):
                 publicacao_titulo_id = cursor.fetchone()[0]
                 cursor.fetchall()
 
-                identificador = publicacao['identificador']
                 ano = publicacao['ano']
                 mes = publicacao['mes']
                 dia = publicacao['dia']
                 conteudo = publicacao['conteudo']
 
                 cursor.execute(
-                    'INSERT INTO publicacao(identificador, publicacao_titulo_id, ano, mes, dia, conteudo) VALUES (%s, %s, %s, %s, %s, %s)',
-                    (identificador, publicacao_titulo_id, ano, mes, dia, conteudo)
+                    #'INSERT INTO publicacao(identificador, publicacao_titulo_id, ano, mes, dia, conteudo) VALUES (%s, %s, %s, %s, %s, %s)',
+                    #(identificador, publicacao_titulo_id, ano, mes, dia, conteudo)
+                    'INSERT INTO publicacao(identificador, publicacao_titulo_id, ano, mes, conteudo) VALUES (%s, %s, %s, %s, %s)',
+                    (identificador, publicacao_titulo_id, ano, mes, conteudo)
                     )
         cursor.close()
         connection.commit()
@@ -452,4 +458,3 @@ def baixar_licitacoes(lista_download, tempo_espera=0.1):
 
         inserir_licitacao_sql(dict_licitacao)
 
-        time.sleep(tempo_espera)

@@ -123,3 +123,13 @@ def baixar_do_redirect(request):
 def baixar_do(request, ano, mes):
     ido.obter_diarios(ano, mes)
     return HttpResponse(reverse('exibir_diarios'))
+
+
+def baixar_licitacoes_redirect(request):
+    return HttpResponseRedirect(reverse('baixar_licitacoes', args=(request.POST['ano_lic_busca'], request.POST['t'])))
+
+
+def baixar_licitacoes(request, ano, t):
+    lics = ido.atualizar_licitacoes_por_ano(ano, t=t)
+
+    return HttpResponse(str(lics))
