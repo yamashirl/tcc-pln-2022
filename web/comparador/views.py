@@ -3,47 +3,25 @@ from django.template import loader
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 
-import mysql.connector
-
-from . import utils
-from . import interface as ido
-
-
-def temp(request):
-    scores = []
-    with mysql.connector.connect(**sql_config) as connection:
-        cursor = connection.cursor()
-        cursor.execute('SELECT edicao, paragrafo, conteudo FROM paragrafo')
-        for edicao, paragrafo, conteudo, in cursor:
-            score = score_paragrafo(request.session, conteudo)
-            scores.append((edicao, paragrafo, score))
-        cursor.close()
-
-    return HttpResponse(scores)
-
-
-def index(request):
-    return HttpResponse("Hello, world.")
+from . import interface as backend
 
 
 def informacoes_paragrafo(request, paragrafo_id):
-    conteudo = utils.obter_conteudo_paragrafo(paragrafo_id)
-    score = utils.score_paragrafo(request.session, conteudo)
-    max_tfidf = utils.get_best_n_terms(request.session, paragrafo_id, n=10)
+    par = backend.informacoes_paragrafo(request.session, paragrafo_id)
 
     template = loader.get_template('comparador/info_paragrafo.html')
     context = {
         'paragrafo_id': paragrafo_id,
-        'conteudo': conteudo,
-        'confianca': score,
-        'best_n': max_tfidf,
+        'conteudo': par['conteudo'],
+        'confianca': par['confianca'],
+        'best_n': par['max_tfidf'],
     }
 
     return HttpResponse(template.render(context, request))
 
 
 def exibir_diarios(request):
-    diarios = utils.obter_lista_diarios()
+    diarios = backend.select_diarios()
 
     template = loader.get_template('comparador/diarios.html')
     context = {'diarios': diarios}
@@ -52,11 +30,7 @@ def exibir_diarios(request):
 
 
 def exibir_do(request, edicao):
-    diarios = utils.obter_paragrafos_do(edicao)
-    paragrafos = []
-    for paragrafo_id, conteudo in diarios:
-        confianca = utils.score_paragrafo(request.session, conteudo)
-        paragrafos.append((paragrafo_id, confianca, conteudo))
+    paragrafos = backend.select_paragrafos_do(request.session, edicao)
 
     template = loader.get_template('comparador/ler_do.html')
     context = {
@@ -81,14 +55,14 @@ def mostrar_candidatos_api(request, paragrafo_id):
 
 
 def mostrar_candidatos(request, paragrafo_id):
-    conteudo_paragrafo = utils.obter_conteudo_paragrafo(paragrafo_id)
-    publicacoes_ord, melhor_cos, melhor_jac, melhor_dis = utils.obter_melhores_candidatos(request.session, paragrafo_id)
+    par = backend.informacoes_paragrafo(request.session, paragrafo_id)
+    publicacoes_ord, melhor_cos, melhor_jac, melhor_dis = backend.mostrar_candidatos(request.session, paragrafo_id)
 
     template = loader.get_template('comparador/comparacao.html')
     context = {
         'paragrafo': {
             'paragrafo_id': paragrafo_id,
-            'conteudo': conteudo_paragrafo
+            'conteudo': par['conteudo']
         },
         'publicacoes': publicacoes_ord,
         'melhor_cos': melhor_cos,
@@ -108,7 +82,7 @@ def buscar(request):
 
 
 def resultado_busca(request, termo_busca):
-    candidatos = utils.buscar_termo_publicacao(request.session, termo_busca)
+    candidatos = proc.buscar_termo_publicacao(request.session, termo_busca)
 
     template = loader.get_template('comparador/busca.html')
     context = {'candidatos': candidatos}
@@ -121,7 +95,7 @@ def baixar_do_redirect(request):
 
 
 def baixar_do(request, ano, mes):
-    dados = ido.obter_diarios(ano, mes)
+    dados = backend.baixar_diarios(ano, mes)
 
     template = loader.get_template('comparador/diarios_baixados.html')
     context = {
@@ -136,7 +110,7 @@ def baixar_licitacoes_redirect(request):
 
 
 def baixar_licitacoes(request, ano, t):
-    statuses = ido.atualizar_licitacoes_por_ano(ano, t=t)
+    statuses = backend.atualizar_licitacoes_por_ano(ano, t=t)
 
     template = loader.get_template('comparador/licitacoes_baixadas.html')
     context = {
@@ -144,3 +118,9 @@ def baixar_licitacoes(request, ano, t):
     }
 
     return HttpResponse(template.render(context, request))
+
+
+def recriar_ngrams(request):
+    # TODO interface
+    backend.recriar_ngrams()
+    return HttpResponse('Recriado')
