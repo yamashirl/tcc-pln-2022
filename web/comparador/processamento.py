@@ -1,19 +1,13 @@
 import re
+import math
 from os import path
 import requests
-import time
 
 import bs4 as bs
 
 from tika import parser
 
-import mysql.connector
-
-sql_config = {
-    'user': 'root',
-    'password': 'see-cret',
-    'database': 'tcc'
-}
+from . import db_utils
 
 
 #
@@ -99,38 +93,6 @@ def limpa_txt(conteudo):
         lista_paragrafos.append(paragrafo.text)
 
     return lista_paragrafos
-
-
-def insere_diario(titulo, paragrafos):
-    success = True
-    with mysql.connector.connect(**sql_config) as connection:
-        cursor = connection.cursor()
-        try:
-            insere_diario_sql(cursor,
-                              titulo['edicao'],
-                              titulo['ano'],
-                              titulo['mes'],
-                              titulo['dia'])
-            insere_paragrafos_sql(cursor, paragrafos, titulo['edicao'])
-            cursor.close()
-            connection.commit()
-        except mysql.connector.Error as e:
-            success = False
-            cursor.close()
-            connection.rollback()
-            print(e)
-    return success
-
-
-def insere_diario_sql(cursor, edicao, ano, mes, dia):
-    cursor.execute('INSERT INTO diario (edicao, ano, mes, dia)'
-                   + ' VALUES (%s, %s, %s, %s)', (edicao, ano, mes, dia))
-
-
-def insere_paragrafos_sql(cursor, lista_paragrafos, edicao_do):
-    for num, paragrafo in enumerate(lista_paragrafos):
-        cursor.execute('INSERT INTO paragrafo (edicao, paragrafo, conteudo)'
-                       + ' VALUES (%s, %s, %s)', (edicao_do, num, paragrafo))
 
 
 def extrai_dados_titulo_do(filename):
@@ -380,79 +342,6 @@ def obter_detalhes_licitacao(identificador):
     return detalhes_dict
 
 
-def inserir_licitacao_sql(dict_licitacao):
-    existe = False
-    with mysql.connector.connect(**sql_config) as connection:
-        cursor = connection.cursor()
-
-        titulo_modalidade = dict_licitacao['titulo']['modalidade']
-        cursor.execute('SELECT modalidade_id FROM modalidade WHERE descricao LIKE %s', (titulo_modalidade,))
-        modalidade_id = cursor.fetchone()[0]
-        cursor.fetchall()
-
-        interessado = dict_licitacao['interessado']
-        cursor.execute('SELECT interessado_id FROM interessado WHERE descricao LIKE %s', (interessado,))
-        interessado_id = cursor.fetchone()[0]
-        cursor.fetchall()
-
-        tipo = dict_licitacao['tipo']
-        cursor.execute('SELECT tipo_id FROM tipo WHERE descricao LIKE %s', (tipo,))
-        tipo_id = cursor.fetchone()[0]
-        cursor.fetchall()
-
-        identificador = dict_licitacao['identificador']
-        numero_modalidade = dict_licitacao['titulo']['numero']
-        ano_modalidade = dict_licitacao['titulo']['ano']
-
-        if 'processo' in dict_licitacao:
-            numero_processo = dict_licitacao['processo']['numero']
-            ano_processo = dict_licitacao['processo']['ano']
-
-        cursor.execute('SELECT numero_processo FROM licitacao WHERE identificador = %s', (identificador,))
-        linha = cursor.fetchone()
-        cursor.fetchall()
-        if linha is not None:
-            existe = True
-            cursor.execute('DELETE FROM publicacao WHERE identificador = %s', (identificador,))
-            cursor.execute('DELETE FROM observacao WHERE identificador = %s', (identificador,))
-            cursor.execute('DELETE FROM apensados WHERE identificador = %s', (identificador,))
-            cursor.execute('DELETE FROM edital WHERE identificador = %s', (identificador,))
-            cursor.execute('DELETE FROM especificacao WHERE identificador = %s', (identificador,))
-            cursor.execute('DELETE FROM prazo WHERE identificador = %s', (identificador,))
-            cursor.execute('DELETE FROM licitacao WHERE identificador = %s', (identificador,))
-
-        cursor.execute('INSERT INTO'
-                       + ' licitacao(identificador, modalidade_id, numero_modalidade, ano_modalidade, tipo_id, interessado_id)'
-                       + ' VALUES (%s, %s, %s, %s, %s, %s)',
-                       (identificador, modalidade_id, numero_modalidade, ano_modalidade, tipo_id, interessado_id))
-        if 'processo' in dict_licitacao:
-            cursor.execute('UPDATE licitacao SET numero_processo = %s, ano_processo = %s WHERE identificador = %s',
-                           (numero_processo, ano_processo, identificador))
-
-        if 'publicacoes' in dict_licitacao:
-            for publicacao in dict_licitacao['publicacoes']:
-                publicacao_titulo = publicacao['titulo']
-                cursor.execute('SELECT publicacao_titulo_id FROM publicacao_titulo'
-                               + ' WHERE descricao LIKE %s', (publicacao_titulo,))
-                publicacao_titulo_id = cursor.fetchone()[0]
-                cursor.fetchall()
-
-                ano = publicacao['ano']
-                mes = publicacao['mes']
-                dia = publicacao['dia']
-                conteudo = publicacao['conteudo']
-
-                cursor.execute(
-                    #'INSERT INTO publicacao(identificador, publicacao_titulo_id, ano, mes, dia, conteudo) VALUES (%s, %s, %s, %s, %s, %s)',
-                    #(identificador, publicacao_titulo_id, ano, mes, dia, conteudo)
-                    'INSERT INTO publicacao(identificador, publicacao_titulo_id, ano, mes, conteudo) VALUES (%s, %s, %s, %s, %s)',
-                    (identificador, publicacao_titulo_id, ano, mes, conteudo)
-                    )
-        cursor.close()
-        connection.commit()
-    return existe
-
-
 def baixar_licitacoes(lista_download, tempo_espera=0.1):
     """
     Baixa todos as licitações num dataframe
@@ -465,7 +354,7 @@ def baixar_licitacoes(lista_download, tempo_espera=0.1):
     for licitacao in lista_download:
         link_licitacao = licitacao['link']
         dict_licitacao = obter_detalhes_licitacao(link_licitacao)
-        status = inserir_licitacao_sql(dict_licitacao)
+        status = db_utils.inserir_licitacao_sql(dict_licitacao)
         statuses.append({
             'identificador': dict_licitacao['identificador'],
             'modalidade': dict_licitacao['titulo']['modalidade'],
@@ -476,3 +365,414 @@ def baixar_licitacoes(lista_download, tempo_espera=0.1):
 
     return statuses
 
+
+#
+# FUNÇÕES RELATIVAS ÀS MÉTRICAS
+#
+
+def calcular_tfidf_termo(termo, sacola_documento, sacola_corpus, corpus_n):
+    termo_frequencia = 0
+
+    for token in sacola_documento:
+        if token == termo:
+            termo_frequencia += 1
+
+    inverso_documento_frequencia = math.log(corpus_n / sacola_corpus[termo])
+
+    return inverso_documento_frequencia
+
+
+def calcular_tfidf_termo_paragrafo(session, termo, paragrafo_id):
+    if ('pars_1gram_bag_idf' not in session
+            or 'pars_n' not in session):
+        load_1gram_paragrafo(session)
+
+    if str(paragrafo_id) + '_1gram_bag' not in session:
+        conteudo_paragrafo = db_utils.obter_conteudo_paragrafo(paragrafo_id)
+        conteudo_sacola = monta_sacola_ngram(conteudo_paragrafo, n=1)
+        session[str(paragrafo_id) + '_1gram_bag'] = conteudo_sacola
+
+    sacola_corpus = session['pars_1gram_bag_idf']
+    n_corpus = session['pars_n']
+    sacola_paragrafo = session[str(paragrafo_id) + '_1gram_bag']
+
+    tfidf_termo = calcular_tfidf_termo(termo, sacola_paragrafo, sacola_corpus, n_corpus)
+
+    return tfidf_termo
+
+
+def calcular_tfidf_termo_publicacao(session, termo, publicacao_id):
+    if ('pubs_1gram_bag_idf' not in session
+            or 'pubs_n' not in session):
+        load_1gram_publicacao(session)
+
+    if str(publicacao_id) + '_1gram_bag' not in session:
+        conteudo_publicacao = obter_conteudo_publicacao(publicacao_id)
+        conteudo_sacola = proc.monta_sacola_ngram(conteudo_publicacao, n=1)
+        session[str(publicacao_id) + '_1gram_bag'] = conteudo_sacola
+
+    sacola_corpus = session['pubs_1gram_bag_idf']
+    n_corpus = session['pubs_n']
+    sacola_publicacao = session[str(publicacao_id) + '_1gram_bag']
+
+    tfidf_termo = calcular_tfidf_termo(termo, sacola_publicacao, sacola_corpus, n_corpus)
+
+    return tfidf_termo
+
+
+def monta_sacola_ngram(texto, n=2, ignora_digito=True):
+    def monta_chave(tokens_anteriores, token_atual):
+        chave = ''
+
+        for token in tokens_anteriores:
+            chave += token + '_'
+        chave += token_atual
+
+        return chave
+
+    def atualiza_tokens(tokens_anteriores, token_atual):
+        if n == 1:
+            return
+        else:
+            i = 0
+            while i < n - 2:
+                tokens_anteriores[i] = tokens_anteriores[i + 1]
+                i += 1
+            tokens_anteriores[i] = token_atual
+            return
+
+    tokenizador = re.compile(r'\w+')
+
+    sacola_ngram = {}
+
+    conteudo = None
+    if ignora_digito:
+        conteudo = re.sub(r'\d', ' ', texto.lower())
+    else:
+        conteudo = texto.lower()
+
+    tokens = tokenizador.findall(conteudo)
+
+    tokens_anteriores = []
+    for i in range(n - 1):
+        tokens_anteriores.append('')
+
+    for token in tokens:
+        chave = monta_chave(tokens_anteriores, token)
+        if chave not in sacola_ngram:
+            sacola_ngram[chave] = 1
+        else:
+            sacola_ngram[chave] += 1
+        atualiza_tokens(tokens_anteriores, token)
+
+    return sacola_ngram
+
+
+def atualiza_sacola_tf(sacola_corpus, sacola):
+    for token in sacola:
+        if token not in sacola_corpus:
+            sacola_corpus[token] = sacola[token]
+        else:
+            sacola_corpus[token] += sacola[token]
+
+
+def atualiza_sacola_idf(sacola_corpus, sacola):
+    for token in sacola:
+        if token not in sacola_corpus:
+            sacola_corpus[token] = 1
+        else:
+            sacola_corpus[token] += 1
+
+
+def calcula_cosseno_sacolas(sacola_a, sacola_b):
+    produto_escalar = 0.0
+
+    soma_a = 0.0
+    soma_b = 0.0
+
+    for k in sacola_a:
+        if k in sacola_b:
+            produto_escalar += sacola_a[k] * sacola_b[k]
+        soma_a += math.pow(sacola_a[k], 2)
+
+    for k in sacola_b:
+        soma_b += math.pow(sacola_b[k], 2)
+
+    magnitude = math.sqrt(soma_a) * math.sqrt(soma_b)
+
+    if abs(magnitude) < 1e-3:
+        similaridade = 0
+    else:
+        similaridade = produto_escalar / magnitude
+
+    return similaridade
+
+
+def calcula_jaccard_sacos(sacola_a, sacola_b):
+    intersec = 0
+
+    for key in sacola_a:
+        if key in sacola_b:
+            intersec += 1
+    uniao = len(sacola_a) + len(sacola_b) - intersec
+    if uniao == 0:
+        return 0
+    return intersec / uniao
+
+
+def calcula_dissimilaridade_sacolas(s_a, s_b, n=1):
+    sacola_a = s_a.copy()
+    sacola_b = s_b.copy()
+    tot_a = 0
+    excl_a = 0
+    ambos = 0
+    excl_b = 0
+    tot_b = 0
+
+    for chave in sacola_a:
+        tot_a += sacola_a[chave]
+
+        if chave in sacola_b:
+            tot_b += sacola_b[chave]
+            if sacola_a[chave] < sacola_b[chave]:
+                ambos += sacola_a[chave]
+                sacola_b[chave] = sacola_b[chave] - sacola_a[chave]
+                excl_b += sacola_b[chave]
+            else:
+                ambos += sacola_b[chave]
+                sacola_a[chave] = sacola_a[chave] - sacola_b[chave]
+                excl_a += sacola_a[chave]
+            sacola_b[chave] = 0
+            sacola_a[chave] = 0
+
+        else:
+            excl_a += sacola_a[chave]
+            sacola_a[chave] = 0
+
+    for chave in sacola_b:
+        tot_b += sacola_b[chave]
+        excl_b += sacola_b[chave]
+        sacola_b[chave] = 0
+
+    if tot_a == 0 or tot_b == 0:
+        return 0
+
+    return 1 - (excl_a * excl_b) / (tot_a * tot_b)
+
+
+def score_paragrafo(session, conteudo):
+    if ('score_bag_pub' not in session
+            or 'score_bag_par' not in session):
+        load_3gram_scorer(session)
+
+    score_bag_pub = session['score_bag_pub']
+    score_bag_par = session['score_bag_par']
+    pubs_3gram_bag_idf = session['pubs_3gram_bag_idf']
+
+    score_pub = 0
+    score_par = 0
+
+    saco_par = monta_sacola_ngram(conteudo, n=3)
+
+    for chave in saco_par:
+        if chave in pubs_3gram_bag_idf:
+            score_pub += saco_par[chave] * score_bag_pub[chave]
+            score_par += saco_par[chave] * score_bag_par[chave]
+    score = score_pub / (score_par + 1)
+
+    return score
+
+
+def get_best_n_terms(session, paragrafo_id, n=1):
+    conteudo_paragrafo = db_utils.obter_conteudo_paragrafo(paragrafo_id)
+    sacola_paragrafo = monta_sacola_ngram(conteudo_paragrafo, n=1)
+
+    tfidf = []
+    for token in sacola_paragrafo:
+        tfidf.append((token, calcular_tfidf_termo_paragrafo(session, token, paragrafo_id)))
+
+    tfidf.sort(key=lambda k: k[1], reverse=True)
+
+    if len(tfidf) > n:
+        return tfidf[:n]
+    else:
+        return tfidf
+
+
+def buscar_termo_publicacao(session, termo):
+    publicacoes = db_utils.obter_publicacoes()
+    candidatos = []
+
+    busca_termo = re.compile(r'\b' + termo + r'\b', flags=re.IGNORECASE)
+
+    for publicacao_id, conteudo in publicacoes:
+        match = busca_termo.search(conteudo)
+
+        if match is None:
+            continue
+
+        tfidf = calcular_tfidf_termo_publicacao(session, termo, publicacao_id)
+        candidatos.append({'publicacao_id': publicacao_id,
+                           'tfidf': tfidf,
+                           'conteudo': conteudo,
+                           })
+
+    return sorted(candidatos, key=lambda k: k['tfidf'], reverse=True)
+
+
+def obter_melhores_candidatos(session, paragrafo_id):
+    try:
+        sacolas_publicacoes_geradas = session['sacolas_publicacoes_geradas']
+    except KeyError as e:
+        conteudo_publicacoes = db_utils.obter_publicacoes()
+
+        sacolas_publicacoes_geradas = []
+        for publicacao_id, conteudo in conteudo_publicacoes:
+            sacola_pub = monta_sacola_ngram(conteudo, n=3, ignora_digito=False)
+            session['sacola_publicacao_' + str(publicacao_id)] = sacola_pub
+            session['conteudo_publicacao_' + str(publicacao_id)] = conteudo
+            sacolas_publicacoes_geradas.append(publicacao_id)
+
+        session['sacolas_publicacoes_geradas'] = sacolas_publicacoes_geradas
+
+    conteudo_paragrafo = db_utils.obter_conteudo_paragrafo(paragrafo_id)
+    sacola_alvo = monta_sacola_ngram(conteudo_paragrafo, n=3, ignora_digito=False)
+
+    publicacoes = []
+    for publicacao_id in sacolas_publicacoes_geradas:
+        conteudo = session['conteudo_publicacao_' + str(publicacao_id)]
+        sacola_pub = monta_sacola_ngram(conteudo, n=3, ignora_digito=False)
+
+        similaridade_cosseno = calcula_cosseno_sacolas(sacola_pub, sacola_alvo)
+        similaridade_jaccard = calcula_jaccard_sacos(sacola_pub, sacola_alvo)
+        dissimilaridade_str = calcula_dissimilaridade_sacolas(sacola_pub, sacola_alvo)
+        publicacoes.append({
+            'publicacao_id': publicacao_id,
+            'conteudo': conteudo,
+            'cosseno': similaridade_cosseno,
+            'jaccard': similaridade_jaccard,
+            'dissim': dissimilaridade_str,
+        })
+
+    publicacoes_ord = sorted(publicacoes, key=lambda e: e['jaccard'], reverse=True)
+
+    melhor_cos = None
+    melhor_jac = None
+    melhor_dis = None
+    if len(publicacoes_ord) > 0:
+        melhor_cos = publicacoes_ord[0]
+        melhor_jac = publicacoes_ord[0]
+        melhor_dis = publicacoes_ord[0]
+        for publicacao in publicacoes_ord:
+            if publicacao['cosseno'] > melhor_cos['cosseno']:
+                melhor_cos = publicacao
+            if publicacao['jaccard'] > melhor_jac['jaccard']:
+                melhor_jac = publicacao
+            if publicacao['dissim'] > melhor_dis['dissim']:
+                melhor_dis = publicacao
+
+    return publicacoes_ord, melhor_cos, melhor_jac, melhor_dis
+
+
+def load_1gram_paragrafo(session):
+    sacola_id, sacola = db_utils.get_sacola('paragrafos_1gram')
+    n = db_utils.get_count('paragrafo')
+
+    session['pars_1gram_bag_idf'] = sacola
+    session['pars_n'] = n
+
+
+def load_1gram_publicacao(session):
+    sacola_id, sacola = db_utils.get_sacola('publicacoes_1gram')
+    n = db_utils.get_count('publicacao')
+
+    session['pubs_1gram_bag_idf'] = sacola
+    session['pubs_n'] = n
+
+
+def load_3gram_scorer(session):
+    if ('pubs_3gram_bag_idf' not in session
+            or 'pars_3gram_bag_idf' not in session
+            or 'pubs_3gram_n' not in session
+            or 'pars_3gram_n' not in session
+            or 'score_bag_pub' not in session
+            or 'score_bag_par' not in session):
+        score_bag_pub = {}
+        score_bag_par = {}
+
+        pubs_3gram_id, _ = db_utils.get_sacola('publicacoes_3gram')
+        pars_3gram_id, _ = db_utils.get_sacola('paragrafos_3gram')
+
+        pubs_3gram_bag_idf, pars_3gram_bag_idf = db_utils.get_sacolas_inner(pubs_3gram_id, pars_3gram_id)
+
+        pubs_3gram_n = db_utils.get_count('publicacao')
+        pars_3gram_n = db_utils.get_count('paragrafo')
+
+        for key in pubs_3gram_bag_idf:
+            if key in pars_3gram_bag_idf:
+                score_bag_pub[key] = pubs_3gram_bag_idf[key] / pubs_3gram_n
+
+        for key in pubs_3gram_bag_idf:
+            if key in pars_3gram_bag_idf:
+                score_bag_par[key] = pars_3gram_bag_idf[key] / pars_3gram_n
+
+        session['pubs_3gram_bag_idf'] = pubs_3gram_bag_idf
+        session['pars_3gram_bag_idf'] = pars_3gram_bag_idf
+        session['pubs_3gram_n'] = pubs_3gram_n
+        session['pars_3gram_n'] = pars_3gram_n
+        session['score_bag_pub'] = score_bag_pub
+        session['score_bag_par'] = score_bag_par
+
+
+def recriar_sacolas_publicacoes(n=1, ignora_digito=True):
+    publicacoes = db_utils.obter_publicacoes()
+
+    sacola_id = db_utils.get_id('sacola', f'publicacoes_{n}gram')
+    if sacola_id is not None:
+        db_utils.remover_sacola(sacola_id)
+
+    sacola_tf = {}
+    sacola_idf = {}
+
+    for publicacao_id, conteudo in publicacoes:
+        sacola_publicacao = monta_sacola_ngram(conteudo, n=n, ignora_digito=ignora_digito)
+        atualiza_sacola_tf(sacola_tf, sacola_publicacao)
+        atualiza_sacola_idf(sacola_idf, sacola_publicacao)
+
+    itens = []
+    for chave in sacola_tf:
+        itens.append({
+            'chave': chave,
+            'frequencia': sacola_tf[chave],
+            'idf': sacola_idf[chave]
+        })
+
+    sacola_id = db_utils.nova_sacola(f'publicacoes_{n}gram', itens)
+    return sacola_id
+
+
+def recriar_sacolas_paragrafos(n=1, ignora_digito=True):
+    paragrafos = db_utils.obter_paragrafos()
+
+    sacola_id = db_utils.get_id('sacola', f'paragrafos_{n}gram')
+    if sacola_id is not None:
+        db_utils.remover_sacola(sacola_id)
+
+    sacola_tf = {}
+    sacola_idf = {}
+
+    for paragrafo_id, conteudo in paragrafos:
+        sacola_paragrafo = monta_sacola_ngram(conteudo, n=n, ignora_digito=ignora_digito)
+        atualiza_sacola_tf(sacola_tf, sacola_paragrafo)
+        atualiza_sacola_idf(sacola_idf, sacola_paragrafo)
+
+    itens = []
+    for chave in sacola_tf:
+        itens.append({
+            'chave': chave,
+            'frequencia': sacola_tf[chave],
+            'idf': sacola_idf[chave]
+        })
+
+    sacola_id = db_utils.nova_sacola(f'paragrafos_{n}gram', itens)
+    return sacola_id

@@ -115,17 +115,17 @@ CREATE TABLE paragrafo (
 	FOREIGN KEY (edicao) REFERENCES diario (edicao)
 );
 
-CREATE TABLE saco_corpus (
-	saco_id BIGINT NOT NULL DEFAULT (UUID_SHORT()) PRIMARY KEY,
+CREATE TABLE sacola (
+	sacola_id BIGINT NOT NULL DEFAULT (UUID_SHORT()) PRIMARY KEY,
 	descricao VARCHAR(20) NOT NULL
 );
 
-CREATE TABLE saco_item (
-	saco_id BIGINT NOT NULL,
+CREATE TABLE sacola_item (
+	sacola_id BIGINT NOT NULL,
 	chave VARCHAR(500) NOT NULL,
 	frequencia INTEGER NOT NULL,
 	idf INTEGER NOT NULL,
 
-	FOREIGN KEY (saco_id) REFERENCES saco_corpus (saco_id)
+	FOREIGN KEY (sacola_id) REFERENCES sacola (sacola_id)
 );
 
