@@ -4,6 +4,7 @@ from . import db_utils
 from plotly.offline import plot
 from plotly.graph_objs import Figure
 from plotly.graph_objs import Scatter
+from plotly.graph_objs import Scatter3d
 from plotly.graph_objs import Layout
 
 from os import path
@@ -97,7 +98,27 @@ def informacoes_paragrafo(session, paragrafo_id):
 def mostrar_candidatos(session, paragrafo_id):
     publicacoes_ord, melhor_cos, melhor_jac, melhor_dis = proc.obter_melhores_candidatos(session, paragrafo_id)
 
-    return publicacoes_ord, melhor_cos, melhor_jac, melhor_dis
+    x_data = []
+    y_data = []
+    z_data = []
+    labels = []
+
+    for publicacao in publicacoes_ord:
+        labels.append(publicacao['publicacao_id'])
+        x_data.append(publicacao['cosseno'])
+        y_data.append(publicacao['jaccard'])
+        z_data.append(publicacao['dissim'])
+
+    plot_fig = Figure(data=[Scatter3d(x=x_data, y=y_data, z=z_data,
+                        mode='markers', name='Confiança',
+                        text=labels,
+                        marker_size=1
+                        )],
+                layout=Layout(autosize=False, width=854, height=480))
+    plot_div = plot(plot_fig,
+                output_type='div')
+
+    return publicacoes_ord, melhor_cos, melhor_jac, melhor_dis, plot_div
 
 
 def recriar_ngrams():

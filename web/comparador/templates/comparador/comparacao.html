@@ -6,6 +6,9 @@
 <body>
 <h1>Comparação do parágrafo {{ paragrafo.paragrafo_id }}</h1>
 <p>{{ paragrafo.conteudo }}</p>
+{% autoescape off %}
+{{ plot }}
+{% endautoescape %}
 <table>
     <tr>
         <th><a href="#melhor-cos">Pular para melhor similaridade Cosseno</a></th>
@@ -14,7 +17,7 @@
         <th><a href="#melhor-jac">Pular para melhor similaridade Jaccard</a></th>
     </tr>
     <tr>
-        <th><a href="#melhor-dis">Pular para melhor similaridade de String</a></th>
+        <th><a href="#melhor-dis">Pular para melhor similaridade de Coincidência</a></th>
     </tr>
 </table>
 <table>

@@ -373,13 +373,12 @@ def baixar_licitacoes(lista_download, tempo_espera=0.1):
 def calcular_tfidf_termo(termo, sacola_documento, sacola_corpus, corpus_n):
     termo_frequencia = 0
 
-    for token in sacola_documento:
-        if token == termo:
-            termo_frequencia += 1
+    if termo in sacola_documento:
+        termo_frequencia = sacola_documento[termo]
 
     inverso_documento_frequencia = math.log(corpus_n / sacola_corpus[termo])
 
-    return inverso_documento_frequencia
+    return termo_frequencia * inverso_documento_frequencia
 
 
 def calcular_tfidf_termo_paragrafo(session, termo, paragrafo_id):
@@ -392,8 +391,8 @@ def calcular_tfidf_termo_paragrafo(session, termo, paragrafo_id):
         conteudo_sacola = monta_sacola_ngram(conteudo_paragrafo, n=1)
         session[str(paragrafo_id) + '_1gram_bag'] = conteudo_sacola
 
-    sacola_corpus = session['pars_1gram_bag_idf']
-    n_corpus = session['pars_n']
+    sacola_corpus = session['pubs_1gram_bag_idf']
+    n_corpus = session['pubs_n']
     sacola_paragrafo = session[str(paragrafo_id) + '_1gram_bag']
 
     tfidf_termo = calcular_tfidf_termo(termo, sacola_paragrafo, sacola_corpus, n_corpus)
@@ -641,7 +640,8 @@ def obter_melhores_candidatos(session, paragrafo_id):
     publicacoes = []
     for publicacao_id in sacolas_publicacoes_geradas:
         conteudo = session['conteudo_publicacao_' + str(publicacao_id)]
-        sacola_pub = monta_sacola_ngram(conteudo, n=3, ignora_digito=False)
+        sacola_pub = session['sacola_publicacao_' + str(publicacao_id)]
+        #sacola_pub = monta_sacola_ngram(conteudo, n=3, ignora_digito=False)
 
         similaridade_cosseno = calcula_cosseno_sacolas(sacola_pub, sacola_alvo)
         similaridade_jaccard = calcula_jaccard_sacos(sacola_pub, sacola_alvo)
