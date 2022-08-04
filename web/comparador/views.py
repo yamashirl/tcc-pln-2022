@@ -57,7 +57,7 @@ def mostrar_candidatos_api(request, paragrafo_id):
 
 def mostrar_candidatos(request, paragrafo_id):
     par = backend.informacoes_paragrafo(request.session, paragrafo_id)
-    publicacoes_ord, melhor_cos, melhor_jac, melhor_dis = backend.mostrar_candidatos(request.session, paragrafo_id)
+    publicacoes_ord, melhor_cos, melhor_jac, melhor_dis, plot = backend.mostrar_candidatos(request.session, paragrafo_id)
 
     template = loader.get_template('comparador/comparacao.html')
     context = {
@@ -68,7 +68,8 @@ def mostrar_candidatos(request, paragrafo_id):
         'publicacoes': publicacoes_ord,
         'melhor_cos': melhor_cos,
         'melhor_jac': melhor_jac,
-        'melhor_dis': melhor_dis
+        'melhor_dis': melhor_dis,
+        'plot': plot
     }
 
     return HttpResponse(template.render(context, request))
