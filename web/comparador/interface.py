@@ -1,6 +1,11 @@
 from . import processamento as proc
 from . import db_utils
 
+from plotly.offline import plot
+from plotly.graph_objs import Figure
+from plotly.graph_objs import Scatter
+from plotly.graph_objs import Layout
+
 from os import path
 
 
@@ -11,11 +16,22 @@ def select_diarios():
 def select_paragrafos_do(session, edicao):
     diario = db_utils.obter_paragrafos_do(edicao)
     paragrafos = []
-    for paragrafo_id, conteudo in diario:
+    confiancas = []
+    for num, (paragrafo_id, conteudo) in enumerate(diario):
         confianca = proc.score_paragrafo(session, conteudo)
-        paragrafos.append((paragrafo_id, confianca, conteudo))
+        confiancas.append(confianca)
+        paragrafos.append((num, paragrafo_id, confianca, conteudo))
 
-    return paragrafos
+    x_data = [*range(len(diario))]
+    y_data = confiancas
+
+    plot_fig = Figure(data=[Scatter(x=x_data, y=y_data,
+                        mode='lines', name='Confiança')],
+                layout=Layout(autosize=False, width=854, height=480))
+    plot_div = plot(plot_fig,
+                output_type='div')
+
+    return paragrafos, plot_div
 
 
 def baixar_diarios(ano, mes):
@@ -91,3 +107,6 @@ def recriar_ngrams():
     proc.recriar_sacolas_paragrafos(n=1, ignora_digito=False)
     proc.recriar_sacolas_paragrafos(n=3, ignora_digito=True)
     pass
+
+def buscar_termo_publicacao(session, termo):
+    return proc.buscar_termo_publicacao(session, termo)

@@ -407,8 +407,8 @@ def calcular_tfidf_termo_publicacao(session, termo, publicacao_id):
         load_1gram_publicacao(session)
 
     if str(publicacao_id) + '_1gram_bag' not in session:
-        conteudo_publicacao = obter_conteudo_publicacao(publicacao_id)
-        conteudo_sacola = proc.monta_sacola_ngram(conteudo_publicacao, n=1)
+        conteudo_publicacao = db_utils.obter_conteudo_publicacao(publicacao_id)
+        conteudo_sacola = monta_sacola_ngram(conteudo_publicacao, n=1)
         session[str(publicacao_id) + '_1gram_bag'] = conteudo_sacola
 
     sacola_corpus = session['pubs_1gram_bag_idf']

@@ -30,12 +30,13 @@ def exibir_diarios(request):
 
 
 def exibir_do(request, edicao):
-    paragrafos = backend.select_paragrafos_do(request.session, edicao)
+    paragrafos, plot = backend.select_paragrafos_do(request.session, edicao)
 
     template = loader.get_template('comparador/ler_do.html')
     context = {
         'edicao': edicao,
         'paragrafos': paragrafos,
+        'plot': plot
     }
 
     return HttpResponse(template.render(context, request))
@@ -82,7 +83,7 @@ def buscar(request):
 
 
 def resultado_busca(request, termo_busca):
-    candidatos = proc.buscar_termo_publicacao(request.session, termo_busca)
+    candidatos = backend.buscar_termo_publicacao(request.session, termo_busca)
 
     template = loader.get_template('comparador/busca.html')
     context = {'candidatos': candidatos}
