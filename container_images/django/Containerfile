@@ -2,7 +2,8 @@ FROM localhost/python:latest
 
 RUN pip install Django && \
     pip install mysql-connector-python && \
-    pip install tika
+    pip install tika && \
+    pip install plotly
 WORKDIR /webproject
 VOLUME /webproject
 EXPOSE 8000
