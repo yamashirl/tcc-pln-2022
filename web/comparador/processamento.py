@@ -376,15 +376,20 @@ def calcular_tfidf_termo(termo, sacola_documento, sacola_corpus, corpus_n):
     if termo in sacola_documento:
         termo_frequencia = sacola_documento[termo]
 
-    inverso_documento_frequencia = math.log(corpus_n / sacola_corpus[termo])
-
-    return termo_frequencia * inverso_documento_frequencia
+    if termo in sacola_corpus:
+        inverso_documento_frequencia = math.log(corpus_n / sacola_corpus[termo])
+        return termo_frequencia * inverso_documento_frequencia
+    else:
+        return -1
 
 
 def calcular_tfidf_termo_paragrafo(session, termo, paragrafo_id):
     if ('pars_1gram_bag_idf' not in session
             or 'pars_n' not in session):
         load_1gram_paragrafo(session)
+    if ('pubs_1gram_bag_idf' not in session
+            or 'pubs_n' not in session):
+        load_1gram_publicacao(session)
 
     if str(paragrafo_id) + '_1gram_bag' not in session:
         conteudo_paragrafo = db_utils.obter_conteudo_paragrafo(paragrafo_id)
