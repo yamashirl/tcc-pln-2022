@@ -2,6 +2,10 @@ import mysql.connector
 
 
 class Conexao:
+    """
+    Classe auxiliar para simplificar a conexão com o banco de dados.
+    """
+
     def __init__(self):
         self.cursor = None
         self.connection = None
@@ -45,6 +49,12 @@ class Conexao:
 
 
 def obter_lista_diarios():
+    """
+    Resgata uma lista dos diários cadastrados no banco de dados
+
+    :rtype: list
+    :return: lista de dicionários, ordenada por edição
+    """
     with Conexao() as cursor:
         resultado = cursor('SELECT edicao, ano, mes, dia FROM diario ORDER BY edicao DESC')
         diarios = []
@@ -59,6 +69,14 @@ def obter_lista_diarios():
 
 
 def obter_paragrafos_do(edicao):
+    """
+    Resgata os parágrafos de um diário oficial por edição.
+
+    :param edicao: número da edição do diário oficial
+
+    :rtype: list
+    :returns: lista de tuplas
+    """
     with Conexao() as cursor:
         resultado = cursor('SELECT paragrafo_id, conteudo FROM paragrafo WHERE edicao = %s', (edicao,))
         if resultado is None:
@@ -72,6 +90,12 @@ def obter_paragrafos_do(edicao):
 
 
 def obter_paragrafos():
+    """
+    Resgata todos os parágrafos cadastrados
+
+    :rtype: list
+    :returns: lista de tuplas
+    """
     with Conexao() as cursor:
         resultado = cursor('SELECT paragrafo_id, conteudo FROM paragrafo')
         if resultado is None:
@@ -85,6 +109,12 @@ def obter_paragrafos():
 
 
 def obter_publicacoes():
+    """
+    Resgata todas as publicações cadastradas
+
+    :rtype: list
+    :returns: lista de tuplas
+    """
     conteudo_publicacoes = []
 
     with Conexao() as cursor:
@@ -96,6 +126,14 @@ def obter_publicacoes():
 
 
 def obter_conteudo_publicacao(publicacao_id):
+    """
+    Resgata o conteúdo de uma publicação de licitação
+
+    :param publicacao_id: ID da publicação
+
+    :rtype: str
+    :returns: conteúdo da publicação
+    """
     with Conexao() as cursor:
         resultado = cursor('SELECT conteudo FROM publicacao WHERE publicacao_id = %s', (publicacao_id,))
         conteudo, = cursor.fetchonlyone()
@@ -103,6 +141,14 @@ def obter_conteudo_publicacao(publicacao_id):
 
 
 def obter_conteudo_paragrafo(paragrafo_id):
+    """
+    Resgata o conteúdo de um parágrafo de um diário oficial
+
+    :param paragrafo_id: ID do parágrafo
+
+    :rtype: str
+    :returns: conteúdo do parágrafo
+    """
     with Conexao() as cursor:
         resultado = cursor('SELECT conteudo FROM paragrafo WHERE paragrafo_id = %s', (paragrafo_id,))
         conteudo, = cursor.fetchonlyone()
@@ -110,6 +156,14 @@ def obter_conteudo_paragrafo(paragrafo_id):
 
 
 def get_count(tabela):
+    """
+    Conta a quantidade de registros na tabela ``tabela``
+
+    :param tabela: nome da tabela
+
+    :rtype: int
+    :returns: quantidade de registros
+    """
     with Conexao() as cursor:
         query = f'SELECT count(*) FROM {tabela}'
         resultado = cursor(query)
@@ -118,6 +172,15 @@ def get_count(tabela):
 
 
 def nova_sacola(descricao, itens):
+    """
+    Cadastra uma nova sacola no banco de dados
+
+    :param descricao: descrição (nome) da sacola
+    :param itens: lista de dicionários de cada item da sacola
+
+    :rtype: int
+    :returns: id da sacola cadastrada
+    """
     with Conexao() as cursor:
         cursor('INSERT INTO sacola(descricao) VALUES (%s)', (descricao,))
         cursor.commit()
@@ -131,6 +194,14 @@ def nova_sacola(descricao, itens):
 
 
 def remover_sacola(sacola_id):
+    """
+    Exclui uma sacola e seu conteúdo do banco de dados
+
+    :param sacola_id: id da sacola a ser excluída
+
+    :rtype: None
+    :returns: None
+    """
     with Conexao() as cursor:
         cursor('DELETE FROM sacola_item WHERE sacola_id = %s', (sacola_id,))
         cursor('DELETE FROM sacola WHERE sacola_id = %s', (sacola_id,))
@@ -138,6 +209,15 @@ def remover_sacola(sacola_id):
 
 
 def get_id(tabela, descricao):
+    """
+    Obtém o id de um registro com descrição ``descricao`` da tabela ``tabela``
+
+    :param tabela: nome da tabela
+    :param descricao: descrição do objeto
+
+    :rtype: int
+    :returns: id do objeto
+    """
     with Conexao() as cursor:
         query = f'SELECT {tabela}_id FROM {tabela} WHERE descricao LIKE %s'
         cursor(query, (descricao,))
@@ -151,6 +231,14 @@ def get_id(tabela, descricao):
 
 
 def get_sacola(descricao):
+    """
+    Resgata o id e o conteúdo da sacola de descrição ``descricao``
+
+    :param descricao: descrição (nome) da sacola
+
+    :rtype: tuple(int, dict)
+    :returns: tupla com o id da sacola e o dicionário da sacola
+    """
     with Conexao() as cursor:
         resultado = cursor('SELECT sacola_id FROM sacola WHERE descricao LIKE %s', (descricao,))
         sacola_id, = cursor.fetchonlyone()
@@ -164,6 +252,16 @@ def get_sacola(descricao):
 
 
 def get_sacolas_inner(sacola_id_a, sacola_id_b):
+    """
+    Executa um ``INNER JOIN`` nas sacolas.
+    Retorna apenas os itens em comum
+
+    :param sacola_id_a: id da sacola A
+    :param sacola_id_b: id da sacola B
+
+    :rtype: tuple(dict, dict)
+    :returns: tupla com as sacolas apenas com os itens em comum
+    """
     with Conexao() as cursor:
         query = 'SELECT chave, sa.idf, sb.idf ' \
                 'FROM sacola_item as sa INNER JOIN sacola_item as sb USING (chave) ' \
@@ -179,6 +277,15 @@ def get_sacolas_inner(sacola_id_a, sacola_id_b):
 
 
 def insere_diario(titulo, paragrafos):
+    """
+    Insere um diário oficial no banco de dados
+
+    :param titulo: dicionario com os valores de edição e data do diário oficial
+    :param paragrafos: lista com os conteúdos dos parágrafos
+
+    :rtype: bool
+    :returns: Status de sucesso ou falha
+    """
     success = True
     with Conexao() as cursor:
         try:
@@ -203,6 +310,15 @@ def insere_diario(titulo, paragrafos):
 
 
 def select_or_insert(tabela, descricao):
+    """
+    Recupera o id de um objeto de uma tabela, ou insere, caso ainda não exista.
+
+    :param tabela: nome da tabela
+    :param descricao: descrição (nome) do objeto
+
+    :rtype: int
+    :returns: id do objeto
+    """
     with Conexao() as cursor:
         select_qry = f'SELECT {tabela + "_id"} FROM {tabela} WHERE descricao LIKE %s'
         resultado = cursor(select_qry, (descricao,))
@@ -222,6 +338,14 @@ def select_or_insert(tabela, descricao):
 
 
 def inserir_licitacao_sql(dict_licitacao):
+    """
+    Insere uma licitação no banco de dados
+
+    :param dict_licitacao: dicionário com os dados da licitação
+
+    :rtype: bool
+    :returns: se o ``identificador`` da licitação já existia ou não
+    """
     existe = False
     with Conexao() as cursor:
         titulo_modalidade = dict_licitacao['titulo']['modalidade']
