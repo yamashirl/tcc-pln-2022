@@ -22,6 +22,16 @@ from . import db_utils
 # paragrafos  -> insere_paragrafos_sql                     -> DB
 
 def obter_links_diarios_oficiais(ano, mes):
+    """
+    Obtém a lista de links dos diários oficiais de um dado mês e ano
+    Nota: Obtém-se os links para os arquivos ``.pdf``, e não os diários em si.
+
+    :param ano: ano dos diários oficiais a serem obtidos
+    :param mes: mes dos diários oficiais a serem obtidos
+
+    :rtype: list
+    :returns: lista com os links dos diários oficiais
+    """
     resposta = requests.get(f'https://www2.bauru.sp.gov.br/juridico/diariooficial.aspx?a={ano}&m={mes}')
     if resposta.status_code != 200:
         print('Página retornou erro', resposta.status_code)
@@ -42,6 +52,14 @@ def obter_links_diarios_oficiais(ano, mes):
 
 
 def obter_diario_oficial(link):
+    """
+    Obtém o ``.pdf`` de um diário oficial a partir do link
+
+    :param link: link do diário oficial
+
+    :rtype: tuple(str, buffer)
+    :returns: tupla com o nome do arquivo e o conteúdo do arquivo
+    """
     nome_arquivo = path.basename(link)
 
     resposta = requests.get(f'https://www2.bauru.sp.gov.br{link}')
@@ -54,7 +72,12 @@ def obter_diario_oficial(link):
 
 def raspa_pdf(buffer):
     """
-    Gera um arquivo .txt a partir dos dados de um arquivo .pdf utilizando um servidor Apache Tika.
+    Extrai os dados de um ``.pdf``
+
+    :param buffer: conteúdo do ``.pdf``
+
+    :rtype: str
+    :returns: conteúdo XHTML raspado
     """
 
     conteudo = parser.from_buffer(buffer, xmlContent=True)
@@ -64,10 +87,15 @@ def raspa_pdf(buffer):
 
 def limpa_txt(conteudo):
     """
-    Utiliza informações levantadas durante a busca exploratória para extrair apenas os dados relevantes do Diário Oficial de Bauru.
-    Ou seja, remove os dados não relevantes como metadados e cabeçalhos de página e separa por parágrafos em uma lista JSON.
-    
-    :returns:
+    Utiliza informações levantadas durante a busca exploratória para extrair
+    apenas os dados relevantes do Diário Oficial de Bauru.
+    Ou seja, remove os dados não relevantes como metadados e cabeçalhos de
+    página e separa por parágrafos em uma lista JSON.
+
+    :param conteudo: conteúdo XHTML
+
+    :rtype: list
+    :returns: lista dos parágrafos (``<p />``)
     """
 
     soup = bs.BeautifulSoup(conteudo)
@@ -96,6 +124,14 @@ def limpa_txt(conteudo):
 
 
 def extrai_dados_titulo_do(filename):
+    """
+    Extrai a data e o número da edição a partir do nome do arquivo do diário oficial
+
+    :param filename: nome do arquivo do diário oficial
+
+    :rtype: dict
+    :returns: dicionário com os dados de data e edição do diário oficial
+    """
     extrator_titulo_do = re.compile(r'do_(?P<ano>\d{4})(?P<mes>\d{2})(?P<dia>\d{2})_(?P<edicao>\d{4})\.pdf')
     titulo_match = extrator_titulo_do.match(filename)
     if titulo_match is None:
@@ -123,7 +159,7 @@ def obter_tabela_licitacoes(t=1):
         * 'Licitações Suspensas' se t = 2;
         * 'Licitações Encerradas' se t = 3.
 
-    :returns: DataFrame com os dados da tabela
+    :returns: lista de dicts dos itens da tabela
     """
 
     # Obter a página de:
@@ -174,7 +210,7 @@ def obter_detalhes_licitacao(identificador):
     """
     Obtém os dados detalhados de uma licitação a partir do código interno do site
     
-    :param identificador int: código indentificador interno do site
+    :param identificador: código indentificador interno do site
     :returns: dict com os dados extraídos
     """
 
@@ -344,10 +380,14 @@ def obter_detalhes_licitacao(identificador):
 
 def baixar_licitacoes(lista_download, tempo_espera=0.1):
     """
-    Baixa todos as licitações num dataframe
-    
-    :keyword tempo_espera int: Tempo de espera entre o download de uma licitação e outra. Utilizado para não enviar muitas requisições em um curto período de tempo.
-    :keyword diretorio str: Diretorio de destino para os arquivos .json baixados.
+    Baixa as informações das licitações de uma lista de dicts obtida pela tabela.
+
+    :param lista_download: lista com os links
+    :param tempo_espera: Tempo de espera entre o download de uma licitação e outra.
+    Utilizado para não enviar muitas requisições em um curto período de tempo.
+
+    :rtype: list
+    :returns: lista de status que indicam se licitação já existia no banco de dados
     """
 
     statuses = []
@@ -371,6 +411,17 @@ def baixar_licitacoes(lista_download, tempo_espera=0.1):
 #
 
 def calcular_tfidf_termo(termo, sacola_documento, sacola_corpus, corpus_n):
+    """
+    Calcula o valor do TF.IDF de um termo ``termo`` de uma sacola.
+
+    :param termo: termo a ser calculado
+    :param sacola_documento: sacola do documento em que ``termo`` se encontra
+    :param sacola_corpus: sacola do corpus que conta a quantidade de documentos em que dado termo está presente
+    :param corpus_n: tamanho do corpus
+
+    :rtype: float
+    :returns: Valor do TF.IDF do termo ``termo`` ou -1, caso a métrica não seja aplicável
+    """
     termo_frequencia = 0
 
     if termo in sacola_documento:
@@ -384,6 +435,17 @@ def calcular_tfidf_termo(termo, sacola_documento, sacola_corpus, corpus_n):
 
 
 def calcular_tfidf_termo_paragrafo(session, termo, paragrafo_id):
+    """
+    Calcula o valor do TF.IDF de um termo de um parágrafo usando os dados
+    já calculados na sessão.
+
+    :param session: sessão do Django
+    :param termo: termo a ser calculado
+    :param paragrafo_id: id do parágrafo do diário oficial
+
+    :rtype: float
+    :returns: valor do TF.IDF do termo do parágrafo sobre o corpus das licitações
+    """
     if ('pars_1gram_bag_idf' not in session
             or 'pars_n' not in session):
         load_1gram_paragrafo(session)
@@ -406,6 +468,17 @@ def calcular_tfidf_termo_paragrafo(session, termo, paragrafo_id):
 
 
 def calcular_tfidf_termo_publicacao(session, termo, publicacao_id):
+    """
+    Calcula o valor do TF.IDF de um termo de uma publicação de licitação usando os dados
+    já calculados na sessão.
+
+    :param session: sessão do Django
+    :param termo: termo a ser calculado
+    :param publicacao_id: id da publicação de licitação
+
+    :rtype: float
+    :returns: valor do TF.IDF do termo da publicação
+    """
     if ('pubs_1gram_bag_idf' not in session
             or 'pubs_n' not in session):
         load_1gram_publicacao(session)
@@ -425,6 +498,16 @@ def calcular_tfidf_termo_publicacao(session, termo, publicacao_id):
 
 
 def monta_sacola_ngram(texto, n=2, ignora_digito=True):
+    """
+    Gera uma sacola-de-palavras (Bag-of-Words) utilizando n-grams a partir de um texto.
+
+    :param texto: texto para gerar a sacola
+    :param n: tamanho do n-gram
+    :param ignora_digito: ignorar os dígitos (trocar por espaços)
+
+    :rtype: dict
+    :returns: sacola gerada
+    """
     def monta_chave(tokens_anteriores, token_atual):
         chave = ''
 
@@ -473,6 +556,15 @@ def monta_sacola_ngram(texto, n=2, ignora_digito=True):
 
 
 def atualiza_sacola_tf(sacola_corpus, sacola):
+    """
+    Atualiza uma sacola que conta a frequência das palavras no corpus.
+
+    :param sacola_corpus: sacola que conta a frequência das palavras
+    :param sacola: sacola com as informações novas
+
+    :rtype: None
+    :returns: None
+    """
     for token in sacola:
         if token not in sacola_corpus:
             sacola_corpus[token] = sacola[token]
@@ -481,6 +573,15 @@ def atualiza_sacola_tf(sacola_corpus, sacola):
 
 
 def atualiza_sacola_idf(sacola_corpus, sacola):
+    """
+    Atualiza uma sacola que conta a ocorrência de palavras nos documentos do corpus.
+
+    :param sacola_corpus: sacola que conta a ocorrência das palavras
+    :param sacola: sacola com as informações novas
+
+    :rtype: None
+    :returns: None
+    """
     for token in sacola:
         if token not in sacola_corpus:
             sacola_corpus[token] = 1
@@ -489,6 +590,15 @@ def atualiza_sacola_idf(sacola_corpus, sacola):
 
 
 def calcula_cosseno_sacolas(sacola_a, sacola_b):
+    """
+    Calcula a similaridade de cosseno de duas sacolas.
+
+    :param sacola_a: Sacola A
+    :param sacola_b: Sacola B
+
+    :rtype: float
+    :returns: valor da similaridade de cosseno
+    """
     produto_escalar = 0.0
 
     soma_a = 0.0
@@ -513,6 +623,15 @@ def calcula_cosseno_sacolas(sacola_a, sacola_b):
 
 
 def calcula_jaccard_sacos(sacola_a, sacola_b):
+    """
+    Calcula a similaridade de Jaccard de duas sacolas.
+
+    :param sacola_a: Sacola A
+    :param sacola_b: Sacola B
+
+    :rtype: float
+    :returns: valor da similaridade de Jaccard
+    """
     intersec = 0
 
     for key in sacola_a:
@@ -525,6 +644,16 @@ def calcula_jaccard_sacos(sacola_a, sacola_b):
 
 
 def calcula_dissimilaridade_sacolas(s_a, s_b, n=1):
+    """
+    Calcula a "Similaridade de coincidência" de duas sacolas
+
+    :param s_a: Sacola A
+    :param s_b: Sacola B
+    :param n: valor do n-gram
+
+    :rtype: float
+    :returns: valor da "similaridade de coincidência"
+    """
     sacola_a = s_a.copy()
     sacola_b = s_b.copy()
     tot_a = 0
@@ -565,6 +694,15 @@ def calcula_dissimilaridade_sacolas(s_a, s_b, n=1):
 
 
 def score_paragrafo(session, conteudo):
+    """
+    Calcula o valor da "Confiança" de um parágrafo.
+
+    :param session: sessão do Django
+    :param conteudo: Conteúdo do parágrafo
+
+    :rtype: float
+    :returns: valor da "confiança" de que o conteúdo é de uma publicação de licitação
+    """
     if ('score_bag_pub' not in session
             or 'score_bag_par' not in session):
         load_3gram_scorer(session)
@@ -588,6 +726,17 @@ def score_paragrafo(session, conteudo):
 
 
 def get_best_n_terms(session, paragrafo_id, n=1):
+    """
+    Obtém os ``n`` termos mais descritores do parágrafo, de acordo com a métrica de TF.IDF
+    (seleciona os ``n`` termos com maior TF.IDF).
+
+    :param session: sessão do Django
+    :param paragrafo_id: id do parágrafo
+    :param n: quantidade de termos a retornar
+
+    :rtype: list
+    :returns: lista de tuplas contendo o termo e o valor do tfidf
+    """
     conteudo_paragrafo = db_utils.obter_conteudo_paragrafo(paragrafo_id)
     sacola_paragrafo = monta_sacola_ngram(conteudo_paragrafo, n=1)
 
@@ -604,6 +753,15 @@ def get_best_n_terms(session, paragrafo_id, n=1):
 
 
 def buscar_termo_publicacao(session, termo):
+    """
+    Resgata os TF.IDF de um termo nas publicações.
+
+    :param session: sessão do Django
+    :param termo: termo a ser buscado
+
+    :rtype: list
+    :returns: lista de dicts com o id e conteúdo da publicação, e o TF.IDF do termo.
+    """
     publicacoes = db_utils.obter_publicacoes()
     candidatos = []
 
@@ -625,6 +783,17 @@ def buscar_termo_publicacao(session, termo):
 
 
 def obter_melhores_candidatos(session, paragrafo_id):
+    """
+    Calcula as publicações mais similares ao paragrafo,
+    utilizando as três métricas
+
+    :param session: Sessão do Django
+    :param paragrafo_id: id do parágrafo
+
+    :rtype: tuple
+    :returns: tupla com todas as publicações com as métricas calculadas,
+    e as melhores publicações de cada métrica
+    """
     try:
         sacolas_publicacoes_geradas = session['sacolas_publicacoes_geradas']
     except KeyError as e:
@@ -680,6 +849,13 @@ def obter_melhores_candidatos(session, paragrafo_id):
 
 
 def load_1gram_paragrafo(session):
+    """
+    Carrega a sacola de 1-gram dos parágrafos na sessão do Django
+
+    :param session: Sessão do Django
+
+    :rtype: None
+    """
     sacola_id, sacola = db_utils.get_sacola('paragrafos_1gram')
     n = db_utils.get_count('paragrafo')
 
@@ -688,6 +864,13 @@ def load_1gram_paragrafo(session):
 
 
 def load_1gram_publicacao(session):
+    """
+    Carrega a sacola de 1-gram das publicações na sessão do Django
+
+    :param session: Sessão do Django
+
+    :rtype: None
+    """
     sacola_id, sacola = db_utils.get_sacola('publicacoes_1gram')
     n = db_utils.get_count('publicacao')
 
@@ -696,6 +879,13 @@ def load_1gram_publicacao(session):
 
 
 def load_3gram_scorer(session):
+    """
+    Carrega as sacolas 3-gram utilizadas no cálculo do nível de confiança
+
+    :param session: Sessão do Django
+
+    :rtype: None
+    """
     if ('pubs_3gram_bag_idf' not in session
             or 'pars_3gram_bag_idf' not in session
             or 'pubs_3gram_n' not in session
@@ -730,6 +920,15 @@ def load_3gram_scorer(session):
 
 
 def recriar_sacolas_publicacoes(n=1, ignora_digito=True):
+    """
+    Analisa todas as publicações do banco de dados e gera as sacolas
+
+    :param n: n-gram
+    :param ignora_digito: ignorar os dígitos (trocar por espaços)
+
+    :rtype: int
+    :returns: id da nova sacola
+    """
     publicacoes = db_utils.obter_publicacoes()
 
     sacola_id = db_utils.get_id('sacola', f'publicacoes_{n}gram')
@@ -757,6 +956,15 @@ def recriar_sacolas_publicacoes(n=1, ignora_digito=True):
 
 
 def recriar_sacolas_paragrafos(n=1, ignora_digito=True):
+    """
+    Analisa todos os parágrafos do banco de dados e gera as sacolas
+
+    :param n: n-gram
+    :param ignora_digito: ignorar os dígitos (trocar por espaços)
+
+    :rtype: int
+    :returns: id da nova sacola
+    """
     paragrafos = db_utils.obter_paragrafos()
 
     sacola_id = db_utils.get_id('sacola', f'paragrafos_{n}gram')
